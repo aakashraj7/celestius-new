@@ -24,6 +24,130 @@ import {
   Pause
 } from 'lucide-react';
 
+// Custom Interactive Magnetic HUD & Particle Cursor Component
+function CustomCursor() {
+  const [pos, setPos] = useState({ x: -100, y: -100 });
+  const [trailingPos, setTrailingPos] = useState({ x: -100, y: -100 });
+  const [isHovered, setIsHovered] = useState(false);
+  const [isClicked, setIsClicked] = useState(false);
+  const [isVisible, setIsVisible] = useState(false);
+  const [sparks, setSparks] = useState([]);
+
+  useEffect(() => {
+    let lastSparkTime = 0;
+
+    const handleMouseMove = (e) => {
+      const { clientX: x, clientY: y } = e;
+      setPos({ x, y });
+      if (!isVisible) setIsVisible(true);
+
+      const target = e.target;
+      const isInteractive = target.closest('a, button, input, [role="button"], .cursor-pointer');
+      setIsHovered(!!isInteractive);
+
+      // Emit glowing golden spark particles on mouse movement
+      const now = Date.now();
+      if (now - lastSparkTime > 40) {
+        lastSparkTime = now;
+        const newSpark = {
+          id: Math.random(),
+          x: x + (Math.random() - 0.5) * 12,
+          y: y + (Math.random() - 0.5) * 12,
+          size: Math.random() * 3 + 2,
+        };
+        setSparks((prev) => [...prev.slice(-12), newSpark]);
+      }
+    };
+
+    const handleMouseDown = () => {
+      setIsClicked(true);
+      setTimeout(() => setIsClicked(false), 240);
+    };
+
+    const handleMouseLeave = () => {
+      setIsVisible(false);
+    };
+
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mousedown', handleMouseDown);
+    document.addEventListener('mouseleave', handleMouseLeave);
+
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mousedown', handleMouseDown);
+      document.removeEventListener('mouseleave', handleMouseLeave);
+    };
+  }, [isVisible]);
+
+  // Clean up old spark particles
+  useEffect(() => {
+    if (sparks.length === 0) return;
+    const timer = setTimeout(() => {
+      setSparks((prev) => prev.slice(1));
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [sparks]);
+
+  // Smooth spring lerp follow loop
+  useEffect(() => {
+    let animationFrameId;
+    const followMouse = () => {
+      setTrailingPos((prev) => ({
+        x: prev.x + (pos.x - prev.x) * 0.16,
+        y: prev.y + (pos.y - prev.y) * 0.16,
+      }));
+      animationFrameId = requestAnimationFrame(followMouse);
+    };
+    followMouse();
+    return () => cancelAnimationFrame(animationFrameId);
+  }, [pos]);
+
+  if (!isVisible) return null;
+
+  return (
+    <>
+      {/* Particle Spark Trail */}
+      {sparks.map((spark) => (
+        <div
+          key={spark.id}
+          className="fixed pointer-events-none rounded-full bg-celestius-gold opacity-60 animate-ping z-30"
+          style={{
+            left: `${spark.x}px`,
+            top: `${spark.y}px`,
+            width: `${spark.size}px`,
+            height: `${spark.size}px`,
+            transform: 'translate(-50%, -50%)',
+            boxShadow: '0 0 10px rgba(255, 204, 0, 0.8)',
+          }}
+        />
+      ))}
+
+      {/* Center Golden Core Pointer Dot */}
+      <div 
+        className={`fixed top-0 left-0 w-3 h-3 rounded-full bg-gradient-to-r from-amber-300 to-celestius-gold pointer-events-none z-50 shadow-[0_0_15px_rgba(255,204,0,0.9)] transition-transform duration-75 ease-out ${
+          isClicked ? 'scale-50' : isHovered ? 'scale-125' : 'scale-100'
+        }`}
+        style={{ transform: `translate3d(${pos.x - 6}px, ${pos.y - 6}px, 0)` }}
+      />
+
+      {/* Outer Magnetic Rotating Reticle Orbit Ring */}
+      <div 
+        className={`fixed top-0 left-0 rounded-full pointer-events-none z-40 transition-all duration-300 ease-out border ${
+          isHovered 
+            ? 'w-12 h-12 border-celestius-gold bg-celestius-gold/15 shadow-[0_0_25px_rgba(255,204,0,0.4)] border-dashed animate-spin' 
+            : isClicked 
+            ? 'w-14 h-14 border-yellow-400 bg-yellow-400/25 shadow-[0_0_25px_rgba(255,204,0,0.6)]' 
+            : 'w-8 h-8 border-yellow-500/40 bg-transparent'
+        }`}
+        style={{ 
+          transform: `translate3d(${trailingPos.x - (isHovered ? 24 : isClicked ? 28 : 16)}px, ${trailingPos.y - (isHovered ? 24 : isClicked ? 28 : 16)}px, 0)`,
+          animationDuration: isHovered ? '6s' : '0s'
+        }}
+      />
+    </>
+  );
+}
+
 // SVG Live Sparkline Graph for Telemetry Metrics
 function SparklineGraph({ data, color = "#ffcc00" }) {
   if (!data || data.length < 2) return null;
@@ -419,6 +543,9 @@ export default function App() {
   return (
     <div className="min-h-screen bg-[#020204] text-white flex flex-col justify-between relative selection:bg-celestius-gold selection:text-black font-sans overflow-x-hidden">
       
+      {/* Custom Interactive Magnetic HUD & Particle Cursor */}
+      <CustomCursor />
+
       {/* Interactive Cursor Spotlight Glow */}
       <div 
         className="fixed inset-0 pointer-events-none z-30 transition-opacity duration-300"
@@ -438,7 +565,7 @@ export default function App() {
           <div className="relative flex flex-col items-center max-w-md w-full text-center z-10">
             
             {/* Central Holographic Logo Container with Dual Spinning Orbital Gyro Rings */}
-            <div className="relative mb-8 flex items-center justify-center">
+            <div className="relative mb-6 flex items-center justify-center">
               {/* Outer Counter-Spinning Orbit Ring */}
               <div className="absolute w-44 h-44 rounded-full border border-dashed border-celestius-gold/30 animate-spin pointer-events-none" style={{ animationDuration: '16s' }} />
               {/* Middle Pulse Ring */}
@@ -456,10 +583,7 @@ export default function App() {
               </div>
             </div>
 
-            {/* Title Header */}
-            <h2 className="text-xl font-bold text-white tracking-widest uppercase mb-1 font-sans">
-              CELESTIUS <span className="text-celestius-gold">V2.0</span>
-            </h2>
+            {/* Subtitle Header (Celestius V2 text removed as requested) */}
             <p className="text-xs font-mono text-zinc-400 tracking-widest uppercase mb-7">
               Student Tech Club @ CIT
             </p>
@@ -790,7 +914,7 @@ export default function App() {
                 <Mail className="w-4 h-4 text-celestius-gold group-hover:scale-110 transition-transform" />
               </a>
 
-              {/* LinkedIn (Updated with official URL) */}
+              {/* LinkedIn */}
               <a 
                 href={linkedinUrl} 
                 target="_blank" 
@@ -801,7 +925,7 @@ export default function App() {
                 <Linkedin className="w-4 h-4 text-celestius-gold group-hover:scale-110 transition-transform" />
               </a>
 
-              {/* GitHub (Updated with official URL) */}
+              {/* GitHub */}
               <a 
                 href={githubUrl} 
                 target="_blank" 
