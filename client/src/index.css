@@ -156,6 +156,34 @@
   animation: letterWave 2.5s ease-in-out infinite;
 }
 
+/* Laser sweep scanline scanner animation */
+@keyframes laserSweep {
+  0% {
+    top: -40%;
+  }
+  100% {
+    top: 120%;
+  }
+}
+
+.animate-laser-sweep {
+  animation: laserSweep 3.2s linear infinite;
+}
+
+/* Floating animation for central logo frame */
+@keyframes logoFloat {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-8px);
+  }
+}
+
+.animate-logo-float {
+  animation: logoFloat 4s ease-in-out infinite;
+}
+
 /* Reduced motion accessibility support */
 @media (prefers-reduced-motion: reduce) {
   *,

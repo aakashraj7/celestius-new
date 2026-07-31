@@ -25,8 +25,26 @@ import {
   Github
 } from 'lucide-react';
 
-// Twinkling Starfield Component with interactive mouse-gravitational dust particles
-function Starfield() {
+// Simulates Vite build/compilation logs during loader progress
+const getLoaderLogs = (val) => {
+  const lines = [
+    `$ npm run build:celestius-hub`,
+    `> celestius-new@2.0.0 build`,
+    `> vite build`
+  ];
+  if (val > 15) lines.push(`✓ 128 modules transformed.`);
+  if (val > 35) lines.push(`rendering chunks...`);
+  if (val > 55) lines.push(`dist/assets/index.js   171.82 kB`);
+  if (val > 75) lines.push(`dist/assets/index.css   34.72 kB`);
+  if (val >= 95) {
+    lines.push(`✓ built in 2.64s`);
+    lines.push(`[SYSTEM] Standby active. Check back soon!`);
+  }
+  return lines;
+};
+
+// Interactive Developer Blueprint Grid Background (with Parallax and Routing Packets)
+function DeveloperGridBackground() {
   const canvasRef = useRef(null);
 
   useEffect(() => {
@@ -45,34 +63,62 @@ function Starfield() {
     };
     window.addEventListener('resize', handleResize);
 
-    // Create static background stars
-    const stars = [];
-    const starCount = Math.min(150, Math.floor((width * height) / 8000));
-    for (let i = 0; i < starCount; i++) {
-      stars.push({
+    // Initialize drifting code tokens (faint programming symbols)
+    const tokens = [];
+    const tokenSymbols = ['</>', '{}', 'const', 'git', 'npm', 'js', 'node', 'api', 'db', 'code', 'cit', '[]', '=>', 'import', 'export', 'main', 'dev'];
+    const tokenCount = Math.min(45, Math.floor((width * height) / 32000));
+    
+    for (let i = 0; i < tokenCount; i++) {
+      tokens.push({
         x: Math.random() * width,
         y: Math.random() * height,
-        size: Math.random() * 1.5 + 0.5,
-        color: Math.random() > 0.8 ? '#FFCC00' : '#FFFFFF',
-        alpha: Math.random(),
-        speed: Math.random() * 0.01 + 0.003,
-        dir: Math.random() > 0.5 ? 1 : -1,
+        vx: (Math.random() - 0.5) * 0.15,
+        vy: (Math.random() - 0.5) * 0.15,
+        symbol: tokenSymbols[i % tokenSymbols.length],
+        alpha: Math.random() * 0.35 + 0.15,
+        fontSize: Math.floor(Math.random() * 4) + 11,
       });
     }
 
-    // Interactive floating cosmic dust particles
-    const dustParticles = [];
-    const dustCount = 40;
-    for (let i = 0; i < dustCount; i++) {
-      dustParticles.push({
-        x: Math.random() * width,
-        y: Math.random() * height,
-        vx: (Math.random() - 0.5) * 0.3,
-        vy: (Math.random() - 0.5) * 0.3,
-        size: Math.random() * 2.5 + 1,
-        alpha: Math.random() * 0.4 + 0.15,
-        color: '#FFCC00',
-      });
+    // Grid size
+    const gridSize = 65;
+
+    // Initialize data packets running along grid lines
+    const packets = [];
+    const packetCount = 20;
+
+    const initPacket = (p = {}) => {
+      const axis = Math.random() > 0.5 ? 'x' : 'y';
+      const dir = Math.random() > 0.5 ? 1 : -1;
+      
+      let lineCoordinate;
+      if (axis === 'x') {
+        const lineIndex = Math.floor(Math.random() * (height / gridSize));
+        lineCoordinate = lineIndex * gridSize;
+      } else {
+        const lineIndex = Math.floor(Math.random() * (width / gridSize));
+        lineCoordinate = lineIndex * gridSize;
+      }
+
+      p.axis = axis;
+      p.dir = dir;
+      p.line = lineCoordinate;
+      p.speed = Math.random() * 1.5 + 1.0;
+      p.length = Math.floor(Math.random() * 20) + 15;
+      p.alpha = Math.random() * 0.5 + 0.25;
+
+      if (axis === 'x') {
+        p.x = dir === 1 ? -p.length : width + p.length;
+        p.y = lineCoordinate;
+      } else {
+        p.x = lineCoordinate;
+        p.y = dir === 1 ? -p.length : height + p.length;
+      }
+      return p;
+    };
+
+    for (let i = 0; i < packetCount; i++) {
+      packets.push(initPacket({}));
     }
 
     let mouse = { x: -1000, y: -1000 };
@@ -80,56 +126,113 @@ function Starfield() {
       mouse.x = e.clientX;
       mouse.y = e.clientY;
     };
+    const handleMouseLeave = () => {
+      mouse.x = -1000;
+      mouse.y = -1000;
+    };
     window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mouseleave', handleMouseLeave);
 
     const render = () => {
       ctx.clearRect(0, 0, width, height);
 
-      // Render Twinkling Stars
-      stars.forEach((star) => {
-        star.alpha += star.speed * star.dir;
-        if (star.alpha >= 1) {
-          star.alpha = 1;
-          star.dir = -1;
-        } else if (star.alpha <= 0.1) {
-          star.alpha = 0.1;
-          star.dir = 1;
-        }
-        ctx.save();
-        ctx.globalAlpha = star.alpha;
-        ctx.fillStyle = star.color;
+      // Create subtle parallax shift based on mouse position
+      const parallaxX = mouse.x !== -1000 ? (mouse.x - width / 2) * -0.015 : 0;
+      const parallaxY = mouse.y !== -1000 ? (mouse.y - height / 2) * -0.015 : 0;
+
+      // 1. Draw Tech Blueprint Grid Lines (offset by parallax)
+      ctx.strokeStyle = 'rgba(255, 204, 0, 0.015)';
+      ctx.lineWidth = 0.5;
+      
+      const startX = (parallaxX % gridSize) - gridSize;
+      const startY = (parallaxY % gridSize) - gridSize;
+
+      // Vertical grid lines
+      for (let x = startX; x < width + gridSize; x += gridSize) {
         ctx.beginPath();
-        ctx.arc(star.x, star.y, star.size, 0, Math.PI * 2);
+        ctx.moveTo(x, 0);
+        ctx.lineTo(x, height);
+        ctx.stroke();
+      }
+      // Horizontal grid lines
+      for (let y = startY; y < height + gridSize; y += gridSize) {
+        ctx.beginPath();
+        ctx.moveTo(0, y);
+        ctx.lineTo(width, y);
+        ctx.stroke();
+      }
+
+      // 2. Draw moving tech data packets (aligned to parallax)
+      packets.forEach((p) => {
+        // Move packet
+        if (p.axis === 'x') {
+          p.x += p.speed * p.dir;
+          if (p.dir === 1 && p.x > width + p.length) initPacket(p);
+          else if (p.dir === -1 && p.x < -p.length) initPacket(p);
+        } else {
+          p.y += p.speed * p.dir;
+          if (p.dir === 1 && p.y > height + p.length) initPacket(p);
+          else if (p.dir === -1 && p.y < -p.length) initPacket(p);
+        }
+
+        const renderX = p.x + (p.axis === 'y' ? parallaxX : 0);
+        const renderY = p.y + (p.axis === 'x' ? parallaxY : 0);
+        const renderLine = p.line + (p.axis === 'x' ? parallaxY : parallaxX);
+
+        ctx.beginPath();
+        if (p.axis === 'x') {
+          ctx.moveTo(renderX, renderLine);
+          ctx.lineTo(renderX - (p.length * p.dir), renderLine);
+        } else {
+          ctx.moveTo(renderLine, renderY);
+          ctx.lineTo(renderLine, renderY - (p.length * p.dir));
+        }
+        
+        ctx.strokeStyle = `rgba(255, 204, 0, ${p.alpha * 0.3})`;
+        ctx.lineWidth = 1.0;
+        ctx.stroke();
+
+        // Draw bright data head
+        ctx.beginPath();
+        if (p.axis === 'x') {
+          ctx.arc(renderX, renderLine, 1.25, 0, Math.PI * 2);
+        } else {
+          ctx.arc(renderLine, renderY, 1.25, 0, Math.PI * 2);
+        }
+        ctx.fillStyle = `rgba(255, 204, 0, ${p.alpha * 1.5 > 1 ? 1 : p.alpha * 1.5})`;
         ctx.fill();
-        ctx.restore();
       });
 
-      // Render & Drift Interactive Dust
-      dustParticles.forEach((p) => {
-        p.x += p.vx;
-        p.y += p.vy;
+      // 3. Draw drifting code tokens (offset by parallax)
+      ctx.textBaseline = 'middle';
+      ctx.textAlign = 'center';
+      
+      tokens.forEach((t) => {
+        t.x += t.vx;
+        t.y += t.vy;
 
-        // Gentle pull towards the cursor
-        const dx = mouse.x - p.x;
-        const dy = mouse.y - p.y;
-        const dist = Math.sqrt(dx * dx + dy * dy);
-        if (dist < 250) {
-          p.x += (dx / dist) * 0.2;
-          p.y += (dy / dist) * 0.2;
-        }
+        if (t.x < -40) t.x = width + 40;
+        if (t.x > width + 40) t.x = -40;
+        if (t.y < -40) t.y = height + 40;
+        if (t.y > height + 40) t.y = -40;
 
-        // Screen boundary wrap-around
-        if (p.x < 0) p.x = width;
-        if (p.x > width) p.x = 0;
-        if (p.y < 0) p.y = height;
-        if (p.y > height) p.y = 0;
+        const renderTX = t.x + parallaxX;
+        const renderTY = t.y + parallaxY;
 
+        const distToMouse = Math.hypot(mouse.x - renderTX, mouse.y - renderTY);
+        const isNearMouse = distToMouse < 120;
+        
         ctx.save();
-        ctx.globalAlpha = p.alpha;
-        ctx.fillStyle = p.color;
-        ctx.beginPath();
-        ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
-        ctx.fill();
+        ctx.font = `${t.fontSize}px monospace`;
+        if (isNearMouse) {
+          ctx.fillStyle = 'rgba(255, 204, 0, 0.8)';
+          ctx.shadowColor = 'rgba(255, 204, 0, 0.3)';
+          ctx.shadowBlur = 8;
+        } else {
+          ctx.fillStyle = `rgba(255, 255, 255, ${t.alpha})`;
+        }
+        
+        ctx.fillText(t.symbol, renderTX, renderTY);
         ctx.restore();
       });
 
@@ -141,6 +244,7 @@ function Starfield() {
     return () => {
       window.removeEventListener('resize', handleResize);
       window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseleave', handleMouseLeave);
       cancelAnimationFrame(animationFrameId);
     };
   }, []);
@@ -217,19 +321,19 @@ export default function App() {
   const getLoadingMessage = (val) => {
     if (val < 25) return "Initializing core modules...";
     if (val < 50) return "Page is currently under construction...";
-    if (val < 75) return "Assembling celestial orbital engines...";
-    if (val < 95) return "Syncing dashboard protocols...";
+    if (val < 75) return "Setting up developer sandbox framework...";
+    if (val < 95) return "Syncing network database parameters...";
     return "System ready. Check back soon!";
   };
 
   // Live Diagnostics Telemetry State
   const [metrics, setMetrics] = useState({ ping: 12, temp: 34.2, load: 24 });
   const [logs, setLogs] = useState([
-    "SYS_INIT: Booting Celestius Core Engine...",
-    "SYS_INIT: Establishing secure connection to CIT API servers...",
-    "SYS_INIT: Connection successful. Latency 12ms.",
-    "SYS_CORE: Activating celestial orbital rings...",
-    "SYS_CORE: Syncing rotation alignment with primary nodes... OK"
+    "SYS_INIT: Booting Club Celestius Hub...",
+    "SYS_INIT: Establishing secure connection to dev sandbox servers...",
+    "SYS_INIT: Node mapping active. Connection Latency 12ms.",
+    "SYS_CORE: Synchronizing React compiler and packages...",
+    "SYS_CORE: Local port 3000 listening for requests... OK"
   ]);
 
   const consoleRef = useRef(null);
@@ -242,11 +346,11 @@ export default function App() {
       "SYS_SEC: Integrity checked. Security protocols active.",
       "SYS_EVT: Loading future events: Athena's Hack, Build-A-Thon...",
       "SYS_INC: Scanning incubator projects... 4 active items found.",
-      "SYS_NET: Ready to broadcast. Waiting for platform launch...",
-      "SYS_CORE: Re-calibrating quantum cores... Temp 34.5°C",
+      "SYS_NET: Port verified. Ready to synchronize network updates.",
+      "SYS_CORE: Re-indexing source repositories... Temp 34.5°C",
       "SYS_API: Webhook verified with Instagram API.",
-      "SYS_ENG: Core synchronization status: 100% aligned.",
-      "SYS_ASSEMBLY: Forging digital ecosystem framework..."
+      "SYS_ENG: Compiler synchronization status: 100% aligned.",
+      "SYS_ASSEMBLY: Mounting code sandbox ecosystem..."
     ];
 
     const interval = setInterval(() => {
@@ -308,74 +412,73 @@ export default function App() {
       {/* Intro Loading Screen Overlay */}
       {loading && (
         <div className={`fixed inset-0 bg-[#020204] z-50 flex flex-col items-center justify-center p-6 transition-opacity duration-700 ease-out select-none ${progress === 100 ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}>
-          <Starfield />
+          <DeveloperGridBackground />
           
-          {/* Ambient center nebula */}
+          {/* Ambient center tech glow */}
           <div className="absolute w-[300px] h-[300px] rounded-full bg-celestius-gold/5 blur-3xl pointer-events-none animate-pulse" />
 
           <div className="relative flex flex-col items-center max-w-md w-full text-center">
             
-            {/* The Radar Tracking Grid */}
-            <div className="relative w-48 h-48 sm:w-56 sm:h-56 mb-8 flex items-center justify-center">
+            {/* High-tech Compiling Console box */}
+            <div className="w-full max-w-sm bg-zinc-950/90 border border-zinc-800 rounded-2xl overflow-hidden p-5 text-left shadow-2xl backdrop-blur-xl border-glow-gold mb-6">
               
-              {/* Concentric grid circles */}
-              <div className="absolute inset-0 rounded-full border border-celestius-gold/10 pointer-events-none" />
-              <div className="absolute inset-4 rounded-full border border-dashed border-celestius-gold/15 pointer-events-none animate-spin-slow" />
-              <div className="absolute inset-10 rounded-full border border-dotted border-white/5 pointer-events-none" />
-              <div className="absolute inset-16 rounded-full border border-celestius-gold/5 pointer-events-none" />
+              {/* Terminal Title */}
+              <div className="flex items-center justify-between border-b border-zinc-900 pb-3 mb-4">
+                <div className="flex items-center gap-2">
+                  <Terminal className="w-4 h-4 text-celestius-gold" />
+                  <span className="text-[10px] font-mono text-zinc-400 font-bold uppercase tracking-wider">CELESTIUS_BUILD_SYSTEM</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-zinc-800" />
+                  <span className="w-1.5 h-1.5 rounded-full bg-zinc-800" />
+                  <span className="w-1.5 h-1.5 rounded-full bg-celestius-gold animate-ping" />
+                </div>
+              </div>
 
-              {/* Crosshair lines */}
-              <div className="absolute inset-y-0 left-1/2 w-[1px] bg-white/5 pointer-events-none" />
-              <div className="absolute inset-x-0 top-1/2 h-[1px] bg-white/5 pointer-events-none" />
+              {/* Vite compilation logs */}
+              <div className="font-mono text-[11px] text-zinc-500 min-h-[120px] space-y-1.5 select-none leading-relaxed">
+                {getLoaderLogs(progress).map((line, idx) => {
+                  let color = "text-zinc-500";
+                  if (line.startsWith("✓")) color = "text-emerald-400";
+                  if (line.startsWith(">")) color = "text-zinc-400";
+                  if (line.startsWith("[SYSTEM]")) color = "text-celestius-gold font-bold";
+                  return (
+                    <div key={idx} className={color}>
+                      {line}
+                    </div>
+                  );
+                })}
+              </div>
 
-              {/* Radar Sweep Effect */}
-              <div className="absolute inset-0 rounded-full bg-[conic-gradient(from_0deg,rgba(255,204,0,0.25)_0deg,transparent_180deg)] animate-spin-medium pointer-events-none z-10" />
-
-              {/* Glowing targets on the radar */}
-              <div className="absolute top-[20%] left-[25%] w-2 h-2 rounded-full bg-celestius-gold shadow-[0_0_10px_#FFCC00] animate-ping [animation-delay:0.5s]" />
-              <div className="absolute bottom-[30%] right-[20%] w-1.5 h-1.5 rounded-full bg-yellow-500 shadow-[0_0_8px_#FFCC00] animate-pulse [animation-delay:1.2s]" />
-              <div className="absolute top-[40%] right-[35%] w-2 h-2 rounded-full bg-white shadow-[0_0_8px_#FFFFFF] animate-pulse [animation-delay:2s]" />
-
-              {/* Centered logo inside the radar */}
-              <div className="relative z-20 w-20 h-20 sm:w-24 sm:h-24 rounded-full bg-black/90 border border-celestius-gold/40 flex items-center justify-center p-3.5 shadow-[0_0_25px_rgba(255,204,0,0.15)] animate-subtle-float">
-                <img 
-                  src={clubLogo} 
-                  alt="Celestius Radar Core" 
-                  className="w-full h-full object-contain rounded-full"
-                />
+              {/* Progress Slider */}
+              <div className="mt-5 border-t border-zinc-900 pt-4">
+                <div className="flex justify-between items-center text-[10px] font-mono text-zinc-400 mb-1.5">
+                  <span>COMPILING ASSETS</span>
+                  <span className="font-semibold text-celestius-gold">{progress}%</span>
+                </div>
+                <div className="w-full bg-zinc-900 h-1.5 rounded-full overflow-hidden p-[1px] border border-zinc-800">
+                  <div 
+                    className="h-full bg-gradient-to-r from-amber-600 to-celestius-gold rounded-full transition-all duration-150 ease-out" 
+                    style={{ width: `${progress}%` }} 
+                  />
+                </div>
               </div>
 
             </div>
 
-            {/* Radar status telemetry */}
-            <div className="space-y-2">
-              <h2 className="text-xs font-mono tracking-[0.3em] text-celestius-gold uppercase animate-pulse">
-                System Scan In Progress
-              </h2>
-              
-              <h1 className="text-xl sm:text-2xl font-extrabold tracking-tight text-white leading-tight font-sans">
-                Page Under Construction
-              </h1>
-              
-              <p className="text-xs font-mono text-zinc-500 tracking-wider">
-                Target coordinates mapped. Please check back soon.
-              </p>
-            </div>
-
-            {/* Progress Readout */}
-            <div className="mt-8 text-[10px] font-mono text-zinc-400 bg-zinc-950/60 border border-zinc-900 rounded-full px-4 py-1.5 flex items-center gap-2">
-              <span className="w-1.5 h-1.5 rounded-full bg-celestius-gold animate-ping" />
-              <span>ALIGNMENT COMPLETED: <strong>{progress}%</strong></span>
-            </div>
+            {/* Sub-label */}
+            <p className="text-xs font-mono text-zinc-500 tracking-wider">
+              Student developer community sandbox compiling. Please check back soon.
+            </p>
 
           </div>
         </div>
       )}
       
-      {/* Background Starfield and Ambient Glowing Nebulae */}
-      <Starfield />
-      <div className="absolute top-[20%] left-[10%] w-[300px] h-[300px] rounded-full bg-yellow-500/5 blur-[120px] pointer-events-none" />
-      <div className="absolute bottom-[20%] right-[10%] w-[400px] h-[400px] rounded-full bg-amber-500/5 blur-[120px] pointer-events-none" />
+      {/* Background Network Graph and Ambient Glowing Tech Accents */}
+      <DeveloperGridBackground />
+      <div className="absolute top-[20%] left-[10%] w-[300px] h-[300px] rounded-full bg-yellow-500/3 blur-[120px] pointer-events-none" />
+      <div className="absolute bottom-[20%] right-[10%] w-[400px] h-[400px] rounded-full bg-amber-500/3 blur-[120px] pointer-events-none" />
 
       {/* Subtle Space Grid Overlay */}
       <div 
@@ -427,74 +530,57 @@ export default function App() {
         {/* Core Layout Split: Orbiting Engine & Telemetry Console */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-8 items-center w-full mb-16">
           
-          {/* LEFT: Redesigned Central Orbiting Celestial Engine */}
+          {/* LEFT: Central Tech Blueprint Schematic panel */}
           <div className="lg:col-span-6 flex flex-col items-center justify-center relative min-h-[380px] sm:min-h-[440px]">
             
-            {/* The Celestial Forge System wrapper */}
-            <div className="relative w-[340px] h-[340px] sm:w-[420px] sm:h-[420px] flex items-center justify-center perspective-1000 preserve-3d">
+            {/* The Blueprint Card wrapper */}
+            <div className="relative w-[340px] h-[340px] sm:w-[400px] sm:h-[400px] bg-zinc-950/80 border border-zinc-800 rounded-3xl p-6 sm:p-8 flex flex-col items-center justify-between shadow-2xl backdrop-blur-xl border-glow-gold">
               
-              {/* Outer Glow Halo behind the core */}
-              <div className="absolute w-[200px] h-[200px] sm:w-[250px] sm:h-[250px] rounded-full bg-celestius-gold/10 blur-3xl animate-pulse-glow" />
+              {/* Corner crosshairs for a drafting/tech blueprint look */}
+              <div className="absolute top-3 left-3 text-zinc-700 font-mono text-[9px]">stk_ref: cit_cel_01</div>
+              <div className="absolute top-3 right-3 text-zinc-700 font-mono text-[9px]">ping: stable</div>
+              <div className="absolute bottom-3 left-3 text-zinc-700 font-mono text-[9px]">port: 3000</div>
+              <div className="absolute bottom-3 right-3 text-zinc-700 font-mono text-[9px]">cpu: active</div>
 
-              {/* Pulsing ring emitters */}
-              <div className="absolute w-[180px] h-[180px] sm:w-[220px] sm:h-[220px] rounded-full border border-celestius-gold/20 animate-pulse-ring" />
-              <div className="absolute w-[180px] h-[180px] sm:w-[220px] sm:h-[220px] rounded-full border border-yellow-500/10 animate-pulse-ring [animation-delay:2s]" />
-
-              {/* ORBIT TRACK 1: 3D Angle 1 */}
-              <div className="absolute inset-0 rounded-full border border-dashed border-celestius-gold/20 preserve-3d orbit-3d-1 pointer-events-none">
-                <div className="w-full h-full relative animate-spin-slow">
-                  {/* Orbiting Badge 1 */}
-                  <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2">
-                    <div className="animate-spin-reverse-slow bg-black/90 border border-celestius-gold/40 px-3 py-1.5 rounded-full flex items-center gap-1.5 shadow-[0_0_12px_rgba(255,204,0,0.15)] text-[10px] font-semibold text-white font-mono">
-                      <Code2 className="w-3.5 h-3.5 text-celestius-gold" />
-                      <span>DEVELOP</span>
-                    </div>
-                  </div>
-                </div>
+              {/* Decorative Tech Grid Lines inside card */}
+              <div className="absolute inset-8 border border-zinc-900 pointer-events-none rounded-2xl flex items-center justify-center">
+                <div className="absolute w-full h-[1px] bg-zinc-900/60" />
+                <div className="absolute h-full w-[1px] bg-zinc-900/60" />
+                <div className="absolute w-[180px] h-[180px] rounded-full border border-dashed border-zinc-900/50" />
               </div>
 
-              {/* ORBIT TRACK 2: 3D Angle 2 (Reverse Rotation) */}
-              <div className="absolute inset-0 rounded-full border border-dotted border-white/10 preserve-3d orbit-3d-2 pointer-events-none">
-                <div className="w-full h-full relative animate-spin-reverse-medium">
-                  {/* Orbiting Badge 2 */}
-                  <div className="absolute bottom-0 left-1/2 -translate-x-1/2 translate-y-1/2">
-                    <div className="animate-spin-medium bg-black/90 border border-white/20 px-3 py-1.5 rounded-full flex items-center gap-1.5 shadow-[0_0_12px_rgba(255,255,255,0.05)] text-[10px] font-semibold text-zinc-300 font-mono">
-                      <Rocket className="w-3.5 h-3.5 text-yellow-400" />
-                      <span>LAUNCH</span>
-                    </div>
-                  </div>
-                </div>
+              <div className="w-full flex justify-between items-center text-[10px] font-mono text-zinc-500 border-b border-zinc-900 pb-3 mt-4">
+                <span>[ CORE_SANDBOX ]</span>
+                <span className="text-celestius-gold flex items-center gap-1">
+                  <span className="w-1.5 h-1.5 rounded-full bg-celestius-gold animate-ping" />
+                  STANDBY
+                </span>
               </div>
 
-              {/* ORBIT TRACK 3: 3D Angle 3 */}
-              <div className="absolute inset-0 rounded-full border border-dashed border-celestius-gold/10 preserve-3d orbit-3d-3 pointer-events-none">
-                <div className="w-full h-full relative animate-spin-medium">
-                  {/* Orbiting Badge 3 */}
-                  <div className="absolute left-0 top-1/2 -translate-x-1/2 -translate-y-1/2">
-                    <div className="animate-spin-reverse-medium bg-black/90 border border-celestius-gold/30 px-3 py-1.5 rounded-full flex items-center gap-1.5 shadow-[0_0_12px_rgba(255,204,0,0.1)] text-[10px] font-semibold text-white font-mono">
-                      <Users className="w-3.5 h-3.5 text-celestius-gold" />
-                      <span>NETWORK</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Core Engine Shield containing Logo */}
-              <div className="relative z-10 w-[220px] h-[120px] sm:w-[260px] sm:h-[140px] rounded-[1.8rem] bg-zinc-950/85 border border-celestius-gold/30 backdrop-blur-xl flex flex-col items-center justify-center p-6 shadow-[0_0_35px_rgba(255,204,0,0.15)] group animate-subtle-float overflow-hidden animate-shine-reflection">
-                
+              {/* Central Logo Panel (Glossy shine sweep + float + hover scale) */}
+              <div className="relative z-10 w-[200px] h-[110px] sm:w-[240px] sm:h-[130px] rounded-2xl bg-zinc-950 border border-zinc-800 flex items-center justify-center p-5 shadow-[0_0_20px_rgba(0,0,0,0.7)] group overflow-hidden animate-logo-float hover:scale-[1.03] hover:border-celestius-gold/30 transition-all duration-300 animate-shine-reflection">
                 {/* Logo Image */}
                 <img 
                   src={clubLogo} 
                   alt="Celestius Core" 
-                  className="w-full h-full object-contain rounded-2xl filter drop-shadow-[0_0_8px_rgba(255,204,0,0.25)]"
+                  className="w-full h-full object-contain filter drop-shadow-[0_0_6px_rgba(255,204,0,0.12)] relative z-10 transition-transform duration-300 group-hover:scale-[1.02]"
                 />
               </div>
 
-              {/* Interactive Info Ring labels */}
-              <div className="absolute bottom-0 text-[10px] font-mono text-zinc-500 flex gap-4 uppercase tracking-wider">
-                <span>Core: ACTIVE</span>
-                <span>•</span>
-                <span>Shield: ENGAGED</span>
+              {/* Static readable badges - completely stable, no rotation! */}
+              <div className="w-full grid grid-cols-3 gap-2.5 mt-4 pt-4 border-t border-zinc-900">
+                <div className="bg-zinc-900/40 border border-zinc-800 px-2.5 py-2 rounded-xl flex flex-col items-center gap-1 shadow-md text-center group hover:border-celestius-gold/30 transition-all select-none">
+                  <Code2 className="w-4 h-4 text-celestius-gold" />
+                  <span className="text-[9px] font-bold text-white font-mono tracking-wider">CODE</span>
+                </div>
+                <div className="bg-zinc-900/40 border border-zinc-800 px-2.5 py-2 rounded-xl flex flex-col items-center gap-1 shadow-md text-center group hover:border-celestius-gold/30 transition-all select-none">
+                  <Hammer className="w-4 h-4 text-celestius-gold animate-pulse" />
+                  <span className="text-[9px] font-bold text-white font-mono tracking-wider">BUILD</span>
+                </div>
+                <div className="bg-zinc-900/40 border border-zinc-800 px-2.5 py-2 rounded-xl flex flex-col items-center gap-1 shadow-md text-center group hover:border-celestius-gold/30 transition-all select-none">
+                  <Users className="w-4 h-4 text-celestius-gold" />
+                  <span className="text-[9px] font-bold text-white font-mono tracking-wider">SHARE</span>
+                </div>
               </div>
 
             </div>
@@ -516,7 +602,7 @@ export default function App() {
                 </span>
               </h1>
               <p className="text-zinc-400 text-sm sm:text-base font-light leading-relaxed mt-3 max-w-xl">
-                Our launchpad is currently under active construction. We will be back online soon with a brand-new space engineered for student developers and creators. Check back soon for launch confirmation!
+                Our dev portal is currently under active construction. We will be back online soon with a brand-new hub engineered for student developers and creators. Check back soon for deployment updates!
               </p>
             </div>
 
@@ -651,7 +737,7 @@ export default function App() {
             Stay Tuned
           </h2>
           <p className="text-xs sm:text-sm text-zinc-400 font-light mb-6 max-w-md mx-auto">
-            Subscribe below to receive updates and notifications as we prepare for launch.
+            Subscribe below to receive updates and notifications as we prepare for release.
           </p>
 
           {/* Subscribed Success Box / Form */}
@@ -660,7 +746,7 @@ export default function App() {
               <Check className="w-8 h-8 p-1.5 rounded-full bg-green-500 text-black font-extrabold" />
               <h4 className="text-sm font-bold text-white">Initialization Complete!</h4>
               <p className="text-xs text-zinc-400 leading-relaxed">
-                You've successfully subscribed. We'll send deployment logs to <strong className="text-white">{emailInput}</strong> as we approach launch.
+                You've successfully subscribed. We'll send deployment logs to <strong className="text-white">{emailInput}</strong> as we approach release.
               </p>
             </div>
           ) : (
