@@ -1361,71 +1361,100 @@
   }
 }
 
-/* Arrow Flight Strike Animation on Scroll */
-@keyframes arrowFlightStrike {
+/* Arrow Flight & Impact Animations on Scroll */
+@keyframes arrowFlightIn {
   0% {
-    transform: translate(-150px, -150px) scale(1.3);
+    transform: translateY(-260px);
     opacity: 0;
   }
   20% {
-    transform: translate(-90px, -90px) scale(1.15);
-    opacity: 0.7;
-  }
-  48% {
-    transform: translate(0px, 0px) scale(1);
     opacity: 1;
-  }
-  54% {
-    transform: rotate(-4.5deg) scale(1.03);
-  }
-  60% {
-    transform: rotate(3.5deg) scale(0.98);
-  }
-  66% {
-    transform: rotate(-2.2deg) scale(1.01);
-  }
-  72% {
-    transform: rotate(1.2deg) scale(0.995);
-  }
-  78% {
-    transform: rotate(-0.5deg) scale(1.002);
-  }
-  84%, 100% {
-    transform: rotate(0deg) scale(1);
-    opacity: 1;
-  }
-}
-
-.animate-arrow-flight-strike {
-  animation: arrowFlightStrike 1.4s cubic-bezier(0.16, 1, 0.3, 1) both;
-  transform-origin: 0px 0px;
-}
-
-/* Bullseye Impact Shockwave Triggered on Strike */
-@keyframes targetImpactShockwave {
-  0%, 45% {
-    r: 16;
-    opacity: 0;
-    stroke-width: 3.5;
-  }
-  50% {
-    r: 20;
-    opacity: 1;
-    stroke-width: 3.5;
   }
   100% {
-    r: 104;
+    transform: translateY(0px);
+    opacity: 1;
+  }
+}
+
+.animate-arrow-flight {
+  animation: arrowFlightIn 0.22s cubic-bezier(0.12, 0.85, 0.25, 1) both;
+}
+
+@keyframes arrowImpactTwang {
+  0% {
+    transform: rotate(0deg);
+  }
+  16% {
+    transform: rotate(-6.5deg);
+  }
+  35% {
+    transform: rotate(4.5deg);
+  }
+  54% {
+    transform: rotate(-2.8deg);
+  }
+  72% {
+    transform: rotate(1.4deg);
+  }
+  88% {
+    transform: rotate(-0.5deg);
+  }
+  100% {
+    transform: rotate(0deg);
+  }
+}
+
+.animate-arrow-twang {
+  transform-origin: 0px 0px;
+  animation: arrowImpactTwang 0.65s cubic-bezier(0.2, 0.8, 0.3, 1) 0.22s both;
+}
+
+/* Bullseye Impact Shockwaves Expanding Outward on Strike */
+@keyframes targetImpactShockwave {
+  0% {
+    transform: scale(0.25);
+    opacity: 0;
+    stroke-width: 4.5;
+  }
+  15% {
+    opacity: 1;
+    stroke-width: 4;
+  }
+  100% {
+    transform: scale(2.4);
     opacity: 0;
     stroke-width: 0.5;
   }
 }
 
 .animate-impact-shockwave-1 {
-  animation: targetImpactShockwave 1.4s cubic-bezier(0.16, 1, 0.3, 1) 0.05s both;
+  transform-origin: 160px 160px;
+  animation: targetImpactShockwave 0.75s cubic-bezier(0.12, 0.8, 0.25, 1) 0.22s both;
 }
 
 .animate-impact-shockwave-2 {
-  animation: targetImpactShockwave 1.4s cubic-bezier(0.16, 1, 0.3, 1) 0.22s both;
+  transform-origin: 160px 160px;
+  animation: targetImpactShockwave 0.85s cubic-bezier(0.12, 0.8, 0.25, 1) 0.28s both;
+}
+
+/* Bullseye Core Kinetic Pulse on Impact */
+@keyframes bullseyeCorePulse {
+  0% {
+    transform: scale(1);
+  }
+  30% {
+    transform: scale(1.32);
+    filter: drop-shadow(0 0 16px rgba(255, 204, 0, 0.95));
+  }
+  100% {
+    transform: scale(1);
+    filter: drop-shadow(0 0 4px rgba(255, 204, 0, 0.4));
+  }
+}
+
+.animate-bullseye-pulse {
+  transform-origin: 160px 160px;
+  animation: bullseyeCorePulse 0.45s cubic-bezier(0.12, 0.85, 0.25, 1) 0.22s both;
 }
 
 /* Submission Tick Mark & Success Shockwave Animations */

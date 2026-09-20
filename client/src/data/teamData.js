@@ -1,6 +1,8 @@
 import varunPhoto from '../assets/team/IMG_5972.JPG?url';
 import ponnurajPhoto from '../assets/team/ponnuraj.jpeg';
-import aakashPhoto from '../assets/team/aakashraj-s.png'
+import aakashPhoto from '../assets/team/aakashraj-s.png';
+import kishorePhoto from '../assets/team/kishore-kv.jpeg';
+
 
 export const teamData = [
   {
@@ -70,6 +72,15 @@ export const teamData = [
     linkedin: "https://www.linkedin.com/in/sanjana-gokulnath-595283372"
   },
   {
+    id: "khathija-farah-s",
+    name: "Khathija Farah S",
+    role: "Event Coordinator",
+    category: "events",
+    division: "Events & Operations",
+    github: "https://github.com/farahkhathijas",
+    linkedin: "https://www.linkedin.com/in/khathija-farah-601aa7372"
+  },
+  {
     id: "sowmiya-r",
     name: "Sowmiya R",
     role: "Events Lead",
@@ -82,19 +93,11 @@ export const teamData = [
     id: "kishore-k-v",
     name: "Kishore K V",
     role: "Treasurer",
+    image: kishorePhoto,
     category: "leadership",
     division: "Executive Core",
     github: "https://github.com/KiShOrE-2008",
     linkedin: "https://www.linkedin.com/in/kishore-k-v-090491349"
-  },
-  {
-    id: "khathija-farah-s",
-    name: "Khathija Farah S",
-    role: "Event Coordinator",
-    category: "events",
-    division: "Events & Operations",
-    github: "https://github.com/farahkhathijas",
-    linkedin: "https://www.linkedin.com/in/khathija-farah-601aa7372"
   },
   {
     id: "akshaya-s",
