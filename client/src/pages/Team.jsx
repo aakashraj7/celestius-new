@@ -286,35 +286,65 @@ function VisionAnimation({ inView = true }) {
    Design: Deep obsidian badge disc, concentric target rings, pulsing gold/cyan bullseye,
    and a dynamic flight dart piercing dead-center with quick impact twang and shockwave ripples.
 */
-function MissionAnimation({ inView = true }) {
+function MissionAnimation({ introCompleted = true }) {
+  const [isInView, setIsInView] = useState(false);
   const [hasTriggered, setHasTriggered] = useState(false);
+  const containerRef = useRef(null);
 
   useEffect(() => {
-    if (inView) {
-      // Re-trigger animation cleanly when scrolled into view
+    const el = containerRef.current;
+    if (!el) return;
+
+    if (!introCompleted) {
+      setIsInView(false);
       setHasTriggered(false);
-      const timer = setTimeout(() => {
-        setHasTriggered(true);
-      }, 50);
-      return () => clearTimeout(timer);
-    } else {
-      setHasTriggered(false);
+      return;
     }
-  }, [inView]);
+
+    if (typeof IntersectionObserver === 'undefined') {
+      setIsInView(true);
+      setHasTriggered(true);
+      return;
+    }
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setIsInView(true);
+          // Trigger arrow strike with punchy kinetic delay after target enters view
+          const timer = setTimeout(() => {
+            setHasTriggered(true);
+          }, 150);
+          return () => clearTimeout(timer);
+        } else {
+          // Reset cleanly when scrolled out so scrolling back re-plays the strike
+          setIsInView(false);
+          setHasTriggered(false);
+        }
+      },
+      {
+        threshold: 0.25,
+        rootMargin: '0px 0px -40px 0px'
+      }
+    );
+
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [introCompleted]);
 
   return (
-    <div className="relative w-full max-w-[280px] sm:max-w-[320px] aspect-square flex items-center justify-center select-none">
+    <div ref={containerRef} className="relative w-full max-w-[280px] sm:max-w-[320px] aspect-square flex items-center justify-center select-none">
       {/* Soft Cyan/Gold Atmospheric Glow */}
       <div 
-        className={`absolute inset-4 rounded-full bg-[#38BDF8]/10 blur-2xl pointer-events-none transition-opacity duration-1000 ${
-          inView ? 'opacity-100' : 'opacity-0'
+        className={`absolute inset-4 rounded-full bg-[#38BDF8]/10 blur-2xl pointer-events-none transition-opacity duration-700 ${
+          isInView ? 'opacity-100' : 'opacity-0'
         }`} 
       />
 
       <svg 
         viewBox="0 0 320 320" 
-        className={`w-full h-full relative z-10 overflow-visible drop-shadow-[0_16px_36px_rgba(0,0,0,0.65)] transition-all duration-1000 ${
-          inView ? 'opacity-100 scale-100 filter-none' : 'opacity-0 scale-90 blur-sm'
+        className={`w-full h-full relative z-10 overflow-visible drop-shadow-[0_16px_36px_rgba(0,0,0,0.65)] transition-all duration-700 ${
+          isInView ? 'opacity-100 scale-100 filter-none' : 'opacity-0 scale-95 blur-sm'
         }`}
         fill="none"
       >
@@ -377,11 +407,11 @@ function MissionAnimation({ inView = true }) {
             filter="url(#mission-dark-glow)" 
           />
 
-          {/* Scroll-Triggered Impact Shockwave Rings (Expanding violently when arrow strikes) */}
+          {/* Scroll-Triggered Impact Shockwave Rings (Expanding outward on arrow impact) */}
           {hasTriggered && (
             <>
-              <circle cx="160" cy="160" r="16" fill="none" stroke="#FFCC00" className="animate-impact-shockwave-1" />
-              <circle cx="160" cy="160" r="16" fill="none" stroke="#38BDF8" className="animate-impact-shockwave-2" />
+              <circle cx="160" cy="160" r="48" fill="none" stroke="#FFCC00" className="animate-impact-shockwave-1" />
+              <circle cx="160" cy="160" r="48" fill="none" stroke="#38BDF8" className="animate-impact-shockwave-2" />
             </>
           )}
 
@@ -394,47 +424,63 @@ function MissionAnimation({ inView = true }) {
 
           {/* Dynamic Action Arrow Striking Dead-Center on Scroll */}
           <g transform="translate(160, 160) rotate(-45)">
-            <g 
-              key={hasTriggered ? 'arrow-struck' : 'arrow-idle'} 
-              className={hasTriggered ? 'animate-arrow-flight-strike' : 'opacity-0'} 
-              style={{ transformOrigin: '0px 0px' }}
-            >
-              {/* Bold Solid Arrow Shaft - High Contrast Dual-Layer */}
-              <line x1="0" y1="-5" x2="0" y2="-100" stroke="#FFCC00" strokeWidth="5.5" strokeLinecap="round" />
-              <line x1="0" y1="-5" x2="0" y2="-100" stroke="#FFFFFF" strokeWidth="2.5" strokeLinecap="round" />
+            <g className={hasTriggered ? 'animate-arrow-flight' : 'opacity-0'}>
+              <g className={hasTriggered ? 'animate-arrow-twang' : ''}>
+                {/* Bold Solid Arrow Shaft - High Contrast Dual-Layer */}
+                <line x1="0" y1="-2" x2="0" y2="-100" stroke="#FFCC00" strokeWidth="5.5" strokeLinecap="round" />
+                <line x1="0" y1="-2" x2="0" y2="-100" stroke="#FFFFFF" strokeWidth="2.5" strokeLinecap="round" />
 
-              {/* Aerodynamic Arrow Head (embedded dead-center in bullseye) */}
-              <polygon points="0,2 -9,-20 0,-15 9,-20" fill="#FFFFFF" filter="url(#mission-dark-glow)" />
-              <polygon points="0,-2 -6,-18 0,-14 6,-18" fill="#FFCC00" />
+                {/* Aerodynamic Arrow Head (embedded dead-center in bullseye) */}
+                <polygon points="0,2 -9,-20 0,-15 9,-20" fill="#FFFFFF" filter="url(#mission-dark-glow)" />
+                <polygon points="0,-2 -6,-18 0,-14 6,-18" fill="#FFCC00" />
 
-              {/* Arrow Fletching / Fins (Clean Aerodynamic Feathers) */}
-              <polygon points="0,-72 -14,-86 0,-82" fill="#FFCC00" />
-              <polygon points="0,-72 14,-86 0,-82" fill="#FFCC00" />
-              <polygon points="0,-82 -14,-96 0,-92" fill="#38BDF8" />
-              <polygon points="0,-82 14,-96 0,-92" fill="#38BDF8" />
+                {/* Arrow Fletching / Fins (Clean Aerodynamic Feathers) */}
+                <polygon points="0,-72 -14,-86 0,-82" fill="#FFCC00" />
+                <polygon points="0,-72 14,-86 0,-82" fill="#FFCC00" />
+                <polygon points="0,-82 -14,-96 0,-92" fill="#38BDF8" />
+                <polygon points="0,-82 14,-96 0,-92" fill="#38BDF8" />
 
-              {/* Arrow Nock Cap */}
-              <circle cx="0" cy="-98" r="3.5" fill="#FFFFFF" />
+                {/* Arrow Nock Cap */}
+                <circle cx="0" cy="-98" r="3.5" fill="#FFFFFF" />
+              </g>
             </g>
           </g>
 
           {/* Scroll Impact Burst Sparks */}
           {hasTriggered && (
-            <g>
-              <circle r="2" fill="#FFFFFF">
-                <animate attributeName="cx" values="160; 144" dur="1.2s" fill="freeze" />
-                <animate attributeName="cy" values="160; 176" dur="1.2s" fill="freeze" />
-                <animate attributeName="opacity" values="0; 1; 0" dur="1.2s" keyTimes="0; 0.45; 1" fill="freeze" />
+            <g key={hasTriggered ? 'sparks-active' : 'sparks-idle'}>
+              <circle r="2.2" fill="#FFFFFF">
+                <animate attributeName="cx" values="160; 136" begin="0.22s" dur="0.6s" fill="freeze" />
+                <animate attributeName="cy" values="160; 140" begin="0.22s" dur="0.6s" fill="freeze" />
+                <animate attributeName="opacity" values="0; 1; 0" keyTimes="0; 0.25; 1" begin="0.22s" dur="0.6s" fill="freeze" />
+                <animate attributeName="r" values="1; 2.5; 0.5" keyTimes="0; 0.3; 1" begin="0.22s" dur="0.6s" fill="freeze" />
+              </circle>
+              <circle r="2.5" fill="#FFCC00">
+                <animate attributeName="cx" values="160; 184" begin="0.22s" dur="0.6s" fill="freeze" />
+                <animate attributeName="cy" values="160; 138" begin="0.22s" dur="0.6s" fill="freeze" />
+                <animate attributeName="opacity" values="0; 1; 0" keyTimes="0; 0.25; 1" begin="0.22s" dur="0.6s" fill="freeze" />
+                <animate attributeName="r" values="1; 3; 0.5" keyTimes="0; 0.3; 1" begin="0.22s" dur="0.6s" fill="freeze" />
+              </circle>
+              <circle r="2.2" fill="#38BDF8">
+                <animate attributeName="cx" values="160; 180" begin="0.22s" dur="0.65s" fill="freeze" />
+                <animate attributeName="cy" values="160; 180" begin="0.22s" dur="0.65s" fill="freeze" />
+                <animate attributeName="opacity" values="0; 1; 0" keyTimes="0; 0.25; 1" begin="0.22s" dur="0.65s" fill="freeze" />
+                <animate attributeName="r" values="1; 2.5; 0.5" keyTimes="0; 0.3; 1" begin="0.22s" dur="0.65s" fill="freeze" />
               </circle>
               <circle r="2" fill="#FFCC00">
-                <animate attributeName="cx" values="160; 176" dur="1.2s" fill="freeze" />
-                <animate attributeName="cy" values="160; 174" dur="1.2s" fill="freeze" />
-                <animate attributeName="opacity" values="0; 1; 0" dur="1.2s" keyTimes="0; 0.45; 1" fill="freeze" />
+                <animate attributeName="cx" values="160; 138" begin="0.22s" dur="0.6s" fill="freeze" />
+                <animate attributeName="cy" values="160; 182" begin="0.22s" dur="0.6s" fill="freeze" />
+                <animate attributeName="opacity" values="0; 1; 0" keyTimes="0; 0.25; 1" begin="0.22s" dur="0.6s" fill="freeze" />
               </circle>
-              <circle r="1.8" fill="#38BDF8">
-                <animate attributeName="cx" values="160; 178" dur="1.2s" fill="freeze" />
-                <animate attributeName="cy" values="160; 144" dur="1.2s" fill="freeze" />
-                <animate attributeName="opacity" values="0; 1; 0" dur="1.2s" keyTimes="0; 0.45; 1" fill="freeze" />
+              <circle r="1.8" fill="#FFFFFF">
+                <animate attributeName="cx" values="160; 160" begin="0.24s" dur="0.55s" fill="freeze" />
+                <animate attributeName="cy" values="160; 130" begin="0.24s" dur="0.55s" fill="freeze" />
+                <animate attributeName="opacity" values="0; 1; 0" keyTimes="0; 0.25; 1" begin="0.24s" dur="0.55s" fill="freeze" />
+              </circle>
+              <circle r="2" fill="#38BDF8">
+                <animate attributeName="cx" values="160; 188" begin="0.24s" dur="0.55s" fill="freeze" />
+                <animate attributeName="cy" values="160; 160" begin="0.24s" dur="0.55s" fill="freeze" />
+                <animate attributeName="opacity" values="0; 1; 0" keyTimes="0; 0.25; 1" begin="0.24s" dur="0.55s" fill="freeze" />
               </circle>
             </g>
           )}
@@ -579,9 +625,7 @@ export default function Team({ introCompleted = true, setActivePage }) {
 
           {/* Right Column: Mission Graphic (Inspired by Reference Image) */}
           <div className="lg:col-span-5 flex justify-center order-1 lg:order-2">
-            <ScrollReveal animation="zoom-in" delay={80} introCompleted={introCompleted}>
-              {({ isVisible }) => <MissionAnimation inView={isVisible} />}
-            </ScrollReveal>
+            <MissionAnimation introCompleted={introCompleted} />
           </div>
         </div>
       </section>
