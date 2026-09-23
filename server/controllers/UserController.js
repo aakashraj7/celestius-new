@@ -78,10 +78,64 @@ export const registerUser = async (req, res) => {
       });
     }
 
-    // 2. Check if student already registered with mobile number, personal email, or (if provided) university email
+    // Validate LinkedIn URL / handle format if provided
+    let cleanLinkedinUrl = "";
+    let cleanLinkedinSlug = "";
+    if (linkedinUrl && typeof linkedinUrl === "string" && linkedinUrl.trim()) {
+      const rawSlug = linkedinUrl
+        .trim()
+        .replace(/^https?:\/\/(www\.)?linkedin\.com\/(in\/)?/i, "")
+        .replace(/^in\//i, "")
+        .replace(/^\/+|\/+$/g, "")
+        .trim();
+
+      const isValidSlug =
+        rawSlug.length >= 3 &&
+        rawSlug.length <= 100 &&
+        /^[a-zA-Z0-9-]{3,100}$/.test(rawSlug) &&
+        !rawSlug.startsWith("-") &&
+        !rawSlug.endsWith("-") &&
+        !rawSlug.includes("--");
+
+      if (!isValidSlug) {
+        return res.status(400).json({
+          success: false,
+          message: "Validation Error",
+          error: "Invalid LinkedIn profile handle format. Must be 3–100 characters containing only letters, numbers, and hyphens.",
+        });
+      }
+      cleanLinkedinSlug = rawSlug;
+      cleanLinkedinUrl = `https://www.linkedin.com/in/${rawSlug}/`;
+    }
+
+    // Extract GitHub username if provided
+    let cleanGithubSlug = "";
+    if (githubUrl && typeof githubUrl === "string" && githubUrl.trim()) {
+      cleanGithubSlug = githubUrl
+        .trim()
+        .replace(/^https?:\/\/(www\.)?github\.com\//i, "")
+        .replace(/\/+$/, "")
+        .trim();
+    }
+
+    // 2. Check if student already registered with mobile number, personal email, university email, GitHub, or LinkedIn
     const duplicateQueries = [{ mobileNumber: cleanMobile }, { personalEmail: cleanPersonalEmail }];
     if (cleanCollegeEmail) {
       duplicateQueries.push({ email: cleanCollegeEmail });
+    }
+
+    let ghRegex = null;
+    if (cleanGithubSlug) {
+      const escapedGh = cleanGithubSlug.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&');
+      ghRegex = new RegExp(`^(https?:\\/\\/(www\.)?github\\.com\\/)?${escapedGh}\\/?$`, 'i');
+      duplicateQueries.push({ githubUrl: ghRegex });
+    }
+
+    let liRegex = null;
+    if (cleanLinkedinSlug) {
+      const escapedLi = cleanLinkedinSlug.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&');
+      liRegex = new RegExp(`(linkedin\\.com\\/in\\/|^in\\/)?${escapedLi}\\/?$`, 'i');
+      duplicateQueries.push({ linkedinUrl: liRegex });
     }
 
     const existingStudent = await Student.findOne({
@@ -96,6 +150,10 @@ export const registerUser = async (req, res) => {
         duplicateField = "University email address";
       } else if (existingStudent.mobileNumber === cleanMobile) {
         duplicateField = "Mobile number";
+      } else if (cleanGithubSlug && existingStudent.githubUrl && ghRegex && ghRegex.test(existingStudent.githubUrl)) {
+        duplicateField = "GitHub username";
+      } else if (cleanLinkedinSlug && existingStudent.linkedinUrl && liRegex && liRegex.test(existingStudent.linkedinUrl)) {
+        duplicateField = "LinkedIn profile";
       }
 
       return res.status(409).json({
@@ -117,7 +175,7 @@ export const registerUser = async (req, res) => {
       role,
       subRole,
       githubUrl: githubUrl ? githubUrl.trim() : "",
-      linkedinUrl: linkedinUrl ? linkedinUrl.trim() : "",
+      linkedinUrl: cleanLinkedinUrl,
     };
 
     if (cleanCollegeEmail) {
@@ -153,6 +211,8 @@ export const registerUser = async (req, res) => {
         mobileNumber: "Mobile number",
         personalEmail: "Personal email",
         email: "University email",
+        githubUrl: "GitHub username",
+        linkedinUrl: "LinkedIn profile",
       };
       const label = fieldLabels[field] || field;
 
@@ -172,13 +232,23 @@ export const registerUser = async (req, res) => {
 };
 
 /**
- * @desc    Check if a student is already registered by email, personalEmail, regNumber, or mobile
+ * @desc    Check if a student is already registered by email, personalEmail, regNumber, mobile, github, or linkedin
  * @route   POST /api/students/check
  * @access  Public
  */
 export const checkStudentExists = async (req, res) => {
   try {
-    const { email, personalEmail, collegeEmail, regNumber, mobileNumber } = req.body;
+    const {
+      email,
+      personalEmail,
+      collegeEmail,
+      regNumber,
+      mobileNumber,
+      githubUsername,
+      linkedinUsername,
+      githubUrl,
+      linkedinUrl
+    } = req.body;
 
     const queries = [];
     const cleanPersonal = personalEmail && typeof personalEmail === 'string' && personalEmail.trim() ? personalEmail.toLowerCase().trim() : null;
@@ -188,6 +258,36 @@ export const checkStudentExists = async (req, res) => {
     if (cleanPersonal) queries.push({ personalEmail: cleanPersonal });
     if (cleanCollege) queries.push({ email: cleanCollege });
     if (regNumber && regNumber.trim()) queries.push({ regNumber: regNumber.toUpperCase().trim() });
+
+    // GitHub username / URL duplicate check
+    let cleanGithubSlug = null;
+    let ghRegex = null;
+    const rawGithub = githubUsername || githubUrl;
+    if (rawGithub && typeof rawGithub === 'string' && rawGithub.trim()) {
+      cleanGithubSlug = rawGithub.replace(/^https?:\/\/(www\.)?github\.com\//i, '').replace(/\/+$/, '').trim();
+      if (cleanGithubSlug) {
+        const escapedGh = cleanGithubSlug.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&');
+        ghRegex = new RegExp(`^(https?:\\/\\/(www\.)?github\\.com\\/)?${escapedGh}\\/?$`, 'i');
+        queries.push({ githubUrl: ghRegex });
+      }
+    }
+
+    // LinkedIn username / URL duplicate check
+    let cleanLinkedinSlug = null;
+    let liRegex = null;
+    const rawLinkedin = linkedinUsername || linkedinUrl;
+    if (rawLinkedin && typeof rawLinkedin === 'string' && rawLinkedin.trim()) {
+      cleanLinkedinSlug = rawLinkedin
+        .replace(/^https?:\/\/(www\.)?linkedin\.com\/(in\/)?/i, '')
+        .replace(/^in\//i, '')
+        .replace(/^\/+|\/+$/g, '')
+        .trim();
+      if (cleanLinkedinSlug) {
+        const escapedLi = cleanLinkedinSlug.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&');
+        liRegex = new RegExp(`(linkedin\\.com\\/in\\/|^in\\/)?${escapedLi}\\/?$`, 'i');
+        queries.push({ linkedinUrl: liRegex });
+      }
+    }
 
     if (queries.length === 0) {
       return res.status(200).json({
@@ -209,6 +309,10 @@ export const checkStudentExists = async (req, res) => {
         duplicateField = "Mobile number";
       } else if (regNumber && existingStudent.regNumber === regNumber.toUpperCase().trim()) {
         duplicateField = "Register number";
+      } else if (cleanGithubSlug && existingStudent.githubUrl && ghRegex && ghRegex.test(existingStudent.githubUrl)) {
+        duplicateField = "GitHub username";
+      } else if (cleanLinkedinSlug && existingStudent.linkedinUrl && liRegex && liRegex.test(existingStudent.linkedinUrl)) {
+        duplicateField = "LinkedIn profile";
       }
 
       return res.status(200).json({
