@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import {
   User,
   Hash,
@@ -41,7 +42,6 @@ import {
   Edit3,
   Lock,
   PhoneCall,
-  Copy,
   X,
   PenTool
 } from 'lucide-react';
@@ -920,6 +920,22 @@ function LanyardHook({ className = "" }) {
   );
 }
 
+// LinkedIn Slug Normalizer & Format Validator
+export const normalizeLinkedinSlug = (val) => {
+  if (!val) return '';
+  return val
+    .trim()
+    .replace(/^https?:\/\/(www\.)?linkedin\.com\/(in\/)?/i, '')
+    .replace(/^in\//i, '')
+    .replace(/^\/+|\/+$/g, '')
+    .trim();
+};
+
+export const isValidLinkedinSlug = (slug) => {
+  if (!slug || slug.length < 3 || slug.length > 100) return false;
+  return /^[a-zA-Z0-9-]{3,100}$/.test(slug) && !slug.startsWith('-') && !slug.endsWith('-') && !slug.includes('--');
+};
+
 export default function RecruitmentApply({ 
   introCompleted = true, 
   setActivePage,
@@ -1005,7 +1021,8 @@ export default function RecruitmentApply({
           subRole: preselectedRole?.subRole || parsed.subRole || 'Frontend Developer',
           githubUsername: parsed.githubUsername || '',
           githubConfirmed: Boolean(parsed.githubConfirmed),
-          linkedinUsername: parsed.linkedinUsername || ''
+          linkedinUsername: parsed.linkedinUsername || '',
+          linkedinConfirmed: Boolean(parsed.linkedinConfirmed)
         };
       }
     } catch (e) {}
@@ -1022,7 +1039,8 @@ export default function RecruitmentApply({
       subRole: preselectedRole?.subRole || 'Frontend Developer',
       githubUsername: '',
       githubConfirmed: false,
-      linkedinUsername: ''
+      linkedinUsername: '',
+      linkedinConfirmed: false
     };
   });
 
@@ -1054,30 +1072,38 @@ export default function RecruitmentApply({
   const [githubLoading, setGithubLoading] = useState(false);
   const [githubError, setGithubError] = useState('');
 
+  // LinkedIn Verification State
+  const [linkedinValidated, setLinkedinValidated] = useState(() => Boolean(formData?.linkedinConfirmed));
+
+  // GitHub & LinkedIn Duplicate Checking State
+  const [checkingGithubDuplicate, setCheckingGithubDuplicate] = useState(false);
+  const [githubDuplicateError, setGithubDuplicateError] = useState('');
+  const [checkingLinkedinDuplicate, setCheckingLinkedinDuplicate] = useState(false);
+  const [linkedinDuplicateError, setLinkedinDuplicateError] = useState('');
+
   // Submission State
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitResult, setSubmitResult] = useState(null);
 
   // Help & Contact Modal State
   const [showHelpModal, setShowHelpModal] = useState(false);
-  const [copiedPhoneIndex, setCopiedPhoneIndex] = useState(null);
-
-  const handleCopyPhone = (number, index) => {
-    try {
-      navigator.clipboard.writeText(number.replace(/\s+/g, ''));
-      setCopiedPhoneIndex(index);
-      setTimeout(() => setCopiedPhoneIndex(null), 2000);
-    } catch (e) {}
-  };
 
   useEffect(() => {
+    if (showHelpModal) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
     const handleKeyDown = (e) => {
       if (e.key === 'Escape' && showHelpModal) {
         setShowHelpModal(false);
       }
     };
     window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      document.body.style.overflow = '';
+    };
   }, [showHelpModal]);
 
   // Synchronize preselected role if user navigated from "Apply for this role" button
@@ -1128,88 +1154,8 @@ export default function RecruitmentApply({
     } catch (e) {}
   }, [maxReachedStep, submitResult]);
 
-  // Reset draft handler to clear storage and start over fresh
-  const handleResetDraft = () => {
-    try {
-      localStorage.removeItem(LOCAL_STORAGE_KEY);
-      localStorage.removeItem(LOCAL_STORAGE_STEP_KEY);
-      localStorage.removeItem(LOCAL_STORAGE_MAX_STEP_KEY);
-      localStorage.removeItem('celestius_recruitment_application_draft_v2');
-      localStorage.removeItem('celestius_recruitment_application_step_v2');
-    } catch (e) {}
-    setFormData({
-      Name: '',
-      regNumber: '',
-      personalEmail: '',
-      email: '',
-      mobileNumber: '',
-      department: 'CSE',
-      year: '1st Year',
-      section: '',
-      role: 'Tech',
-      subRole: 'Frontend Developer',
-      githubUsername: '',
-      githubConfirmed: false,
-      linkedinUsername: ''
-    });
-    setCurrentStep(1);
-    setMaxReachedStep(1);
-    setStepErrors({});
-    setPersonalEmailStatus('idle');
-    setPersonalEmailConflictMsg('');
-    setEmailStatus('idle');
-    setEmailConflictMsg('');
-    setMobileStatus('idle');
-    setMobileConflictMsg('');
-    setGithubData(null);
-    setGithubLoading(false);
-    setGithubError('');
-    setHasRestoredDraft(false);
-    setSubmitResult(null);
-  };
-
-  // GitHub API Live Fetch (Debounced)
-  useEffect(() => {
-    const rawUser = formData.githubUsername.trim().replace(/^@/, '');
-    if (!rawUser) {
-      setGithubData(null);
-      setGithubError('');
-      setGithubLoading(false);
-      setFormData((prev) => (prev.githubConfirmed ? { ...prev, githubConfirmed: false } : prev));
-      return;
-    }
-
-    const timer = setTimeout(async () => {
-      setGithubLoading(true);
-      setGithubError('');
-      try {
-        const res = await fetch(`https://api.github.com/users/${encodeURIComponent(rawUser)}`);
-        if (res.ok) {
-          const data = await res.json();
-          setGithubData(data);
-          setGithubError('');
-        } else if (res.status === 404) {
-          setGithubData(null);
-          setGithubError('GitHub username not found on GitHub.');
-          setFormData((prev) => (prev.githubConfirmed ? { ...prev, githubConfirmed: false } : prev));
-        } else {
-          setGithubData(null);
-          setGithubError('Unable to verify GitHub profile.');
-          setFormData((prev) => (prev.githubConfirmed ? { ...prev, githubConfirmed: false } : prev));
-        }
-      } catch (err) {
-        setGithubData(null);
-        setGithubError('Network issue contacting GitHub API.');
-      } finally {
-        setGithubLoading(false);
-      }
-    }, 500);
-
-    return () => clearTimeout(timer);
-  }, [formData.githubUsername]);
-
-  // Check email, personalEmail, regNumber, and mobileNumber uniqueness against database
-  const checkUniquenessApi = useCallback(async (email, regNumber, mobileNumber, personalEmail) => {
+  // Check email, personalEmail, regNumber, mobileNumber, github, and linkedin uniqueness against database
+  const checkUniquenessApi = useCallback(async (email, regNumber, mobileNumber, personalEmail, githubUsername, linkedinUsername) => {
     try {
       const baseUrl = getApiBaseUrl();
       const apiUrl = baseUrl.endsWith('/api') ? `${baseUrl}/students/check` : `${baseUrl}/api/students/check`;
@@ -1219,6 +1165,8 @@ export default function RecruitmentApply({
       if (personalEmail) payload.personalEmail = personalEmail.trim().toLowerCase();
       if (regNumber) payload.regNumber = regNumber.trim().toUpperCase();
       if (mobileNumber) payload.mobileNumber = mobileNumber.replace(/\D/g, '');
+      if (githubUsername) payload.githubUsername = githubUsername.trim();
+      if (linkedinUsername) payload.linkedinUsername = linkedinUsername.trim();
 
       let res;
       try {
@@ -1244,6 +1192,146 @@ export default function RecruitmentApply({
       return { success: false, exists: false };
     }
   }, []);
+
+  // Reset draft handler to clear storage and start over fresh
+  const handleResetDraft = () => {
+    try {
+      localStorage.removeItem(LOCAL_STORAGE_KEY);
+      localStorage.removeItem(LOCAL_STORAGE_STEP_KEY);
+      localStorage.removeItem(LOCAL_STORAGE_MAX_STEP_KEY);
+      localStorage.removeItem('celestius_recruitment_application_draft_v2');
+      localStorage.removeItem('celestius_recruitment_application_step_v2');
+    } catch (e) {}
+    setFormData({
+      Name: '',
+      regNumber: '',
+      personalEmail: '',
+      email: '',
+      mobileNumber: '',
+      department: 'CSE',
+      year: '1st Year',
+      section: '',
+      role: 'Tech',
+      subRole: 'Frontend Developer',
+      githubUsername: '',
+      githubConfirmed: false,
+      linkedinUsername: '',
+      linkedinConfirmed: false
+    });
+    setCurrentStep(1);
+    setMaxReachedStep(1);
+    setStepErrors({});
+    setPersonalEmailStatus('idle');
+    setPersonalEmailConflictMsg('');
+    setEmailStatus('idle');
+    setEmailConflictMsg('');
+    setMobileStatus('idle');
+    setMobileConflictMsg('');
+    setGithubData(null);
+    setGithubLoading(false);
+    setGithubError('');
+    setGithubDuplicateError('');
+    setLinkedinValidated(false);
+    setLinkedinDuplicateError('');
+    setHasRestoredDraft(false);
+    setSubmitResult(null);
+  };
+
+  // GitHub API Live Fetch & DB Uniqueness Check (Debounced)
+  useEffect(() => {
+    const rawUser = formData.githubUsername.trim().replace(/^@/, '');
+    if (!rawUser) {
+      setGithubData(null);
+      setGithubError('');
+      setGithubDuplicateError('');
+      setGithubLoading(false);
+      setFormData((prev) => (prev.githubConfirmed ? { ...prev, githubConfirmed: false } : prev));
+      return;
+    }
+
+    const timer = setTimeout(async () => {
+      setGithubLoading(true);
+      setGithubError('');
+      setGithubDuplicateError('');
+      try {
+        const res = await fetch(`https://api.github.com/users/${encodeURIComponent(rawUser)}`);
+        if (res.ok) {
+          const data = await res.json();
+          setGithubData(data);
+          setGithubError('');
+
+          // Live duplicate check against database
+          setCheckingGithubDuplicate(true);
+          const dup = await checkUniquenessApi(null, null, null, null, rawUser, null);
+          setCheckingGithubDuplicate(false);
+          if (dup.exists && (dup.field === 'GitHub username' || !dup.field)) {
+            const msg = dup.message || 'This GitHub username is already registered by another applicant.';
+            setGithubDuplicateError(msg);
+            setStepErrors((prev) => ({ ...prev, githubUsername: msg }));
+            setFormData((prev) => (prev.githubConfirmed ? { ...prev, githubConfirmed: false } : prev));
+          } else {
+            setGithubDuplicateError('');
+            setStepErrors((prev) => {
+              const next = { ...prev };
+              if (next.githubUsername && next.githubUsername.includes('already registered')) {
+                delete next.githubUsername;
+              }
+              return next;
+            });
+          }
+        } else if (res.status === 404) {
+          setGithubData(null);
+          setGithubError('GitHub username not found on GitHub.');
+          setFormData((prev) => (prev.githubConfirmed ? { ...prev, githubConfirmed: false } : prev));
+        } else {
+          setGithubData(null);
+          setGithubError('Unable to verify GitHub profile.');
+          setFormData((prev) => (prev.githubConfirmed ? { ...prev, githubConfirmed: false } : prev));
+        }
+      } catch (err) {
+        setGithubData(null);
+        setGithubError('Network issue contacting GitHub API.');
+      } finally {
+        setGithubLoading(false);
+      }
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [formData.githubUsername, checkUniquenessApi]);
+
+  // Live uniqueness check for LinkedIn profile handle
+  useEffect(() => {
+    const cleanLinkedin = normalizeLinkedinSlug(formData.linkedinUsername);
+    if (!cleanLinkedin || !isValidLinkedinSlug(cleanLinkedin)) {
+      setLinkedinDuplicateError('');
+      setCheckingLinkedinDuplicate(false);
+      return;
+    }
+
+    const timer = setTimeout(async () => {
+      setCheckingLinkedinDuplicate(true);
+      const dup = await checkUniquenessApi(null, null, null, null, null, cleanLinkedin);
+      setCheckingLinkedinDuplicate(false);
+
+      if (dup.exists && (dup.field === 'LinkedIn profile' || !dup.field)) {
+        const msg = dup.message || 'This LinkedIn profile is already registered by another applicant.';
+        setLinkedinDuplicateError(msg);
+        setStepErrors((prev) => ({ ...prev, linkedinUsername: msg }));
+        setFormData((prev) => (prev.linkedinConfirmed ? { ...prev, linkedinConfirmed: false } : prev));
+      } else {
+        setLinkedinDuplicateError('');
+        setStepErrors((prev) => {
+          const next = { ...prev };
+          if (next.linkedinUsername && next.linkedinUsername.includes('already registered')) {
+            delete next.linkedinUsername;
+          }
+          return next;
+        });
+      }
+    }, 450);
+
+    return () => clearTimeout(timer);
+  }, [formData.linkedinUsername, checkUniquenessApi]);
 
   // Live validation on Personal Email input (Compulsory: must end with @gmail.com & unique check)
   useEffect(() => {
@@ -1410,9 +1498,12 @@ export default function RecruitmentApply({
     } else if (name === 'githubUsername') {
       const cleanUser = value.replace(/^https?:\/\/(www\.)?github\.com\//i, '').replace(/\/+$/, '').trim();
       setFormData((prev) => ({ ...prev, githubUsername: cleanUser, githubConfirmed: false }));
+      setGithubDuplicateError('');
     } else if (name === 'linkedinUsername') {
-      const cleanUser = value.replace(/^https?:\/\/(www\.)?linkedin\.com\/(in\/)?/i, '').replace(/\/+$/, '').trim();
-      setFormData((prev) => ({ ...prev, linkedinUsername: cleanUser }));
+      const cleanUser = normalizeLinkedinSlug(value);
+      setFormData((prev) => ({ ...prev, linkedinUsername: cleanUser, linkedinConfirmed: false }));
+      setLinkedinValidated(false);
+      setLinkedinDuplicateError('');
     } else {
       setFormData((prev) => ({
         ...prev,
@@ -1519,7 +1610,9 @@ export default function RecruitmentApply({
 
     // STEP 5: Profiles (GitHub and LinkedIn are compulsory)
     if (step === 5) {
-      if (!formData.githubUsername.trim()) {
+      if (githubDuplicateError) {
+        errors.githubUsername = githubDuplicateError;
+      } else if (!formData.githubUsername.trim()) {
         errors.githubUsername = 'GitHub username is required.';
       } else if (githubLoading) {
         errors.githubUsername = 'Verifying GitHub profile... Please wait a moment.';
@@ -1529,8 +1622,36 @@ export default function RecruitmentApply({
         errors.githubUsername = 'Please click to select and confirm your GitHub profile card below.';
       }
 
-      if (!formData.linkedinUsername.trim()) {
+      const cleanLinkedin = normalizeLinkedinSlug(formData.linkedinUsername);
+      if (linkedinDuplicateError) {
+        errors.linkedinUsername = linkedinDuplicateError;
+      } else if (!cleanLinkedin) {
         errors.linkedinUsername = 'LinkedIn profile handle is required.';
+      } else if (!isValidLinkedinSlug(cleanLinkedin)) {
+        errors.linkedinUsername = 'Invalid LinkedIn handle format. Must be 3–100 alphanumeric characters or hyphens.';
+      } else if (!linkedinValidated) {
+        errors.linkedinUsername = 'Please click "Validate" to test your LinkedIn profile link first.';
+      } else if (!formData.linkedinConfirmed) {
+        errors.linkedinUsername = 'Please check the box confirming this is your LinkedIn profile.';
+      }
+
+      // If no initial errors, run live duplicate check against DB before proceeding
+      if (Object.keys(errors).length === 0) {
+        const ghUser = formData.githubUsername.trim().replace(/^@/, '');
+        const dupCheck = await checkUniquenessApi(null, null, null, null, ghUser, cleanLinkedin);
+        if (dupCheck.exists) {
+          if (dupCheck.field === 'GitHub username') {
+            errors.githubUsername = dupCheck.message || 'This GitHub username is already registered by another applicant.';
+            setGithubDuplicateError(errors.githubUsername);
+            setFormData((prev) => ({ ...prev, githubConfirmed: false }));
+          } else if (dupCheck.field === 'LinkedIn profile') {
+            errors.linkedinUsername = dupCheck.message || 'This LinkedIn profile is already registered by another applicant.';
+            setLinkedinDuplicateError(errors.linkedinUsername);
+            setFormData((prev) => ({ ...prev, linkedinConfirmed: false }));
+          } else {
+            errors.githubUsername = dupCheck.message || 'Account already registered.';
+          }
+        }
       }
     }
 
@@ -1600,16 +1721,16 @@ export default function RecruitmentApply({
     const cleanSection = formData.section.trim().toUpperCase() || 'NIL';
     const cleanRegNumber = formData.regNumber.trim().toUpperCase() || '';
     const cleanGithubUrl = formData.githubUsername.trim() ? `https://github.com/${formData.githubUsername.trim()}` : '';
-    const cleanLinkedinUrl = formData.linkedinUsername.trim() ? `https://linkedin.com/in/${formData.linkedinUsername.trim()}` : '';
+    const cleanLinkedinUrl = formData.linkedinUsername.trim() ? `https://www.linkedin.com/in/${formData.linkedinUsername.trim()}/` : '';
 
     // Final pre-flight uniqueness re-check to prevent race conditions or bypassed edits
-    const preCheck = await checkUniquenessApi(cleanEmail, null, cleanMobile, cleanPersonalEmail);
+    const preCheck = await checkUniquenessApi(cleanEmail, null, cleanMobile, cleanPersonalEmail, formData.githubUsername.trim(), formData.linkedinUsername.trim());
     if (preCheck.exists) {
       setIsSubmitting(false);
       setSubmitResult({
         status: 'conflict',
         message: 'Already Registered',
-        details: preCheck.message || 'A student with this Mobile Number or Email has already registered.'
+        details: preCheck.message || 'A candidate with this information has already registered.'
       });
       return;
     }
@@ -1658,7 +1779,8 @@ export default function RecruitmentApply({
         const submittedProfiles = {
           githubUsername: formData.githubUsername.trim(),
           linkedinUsername: formData.linkedinUsername.trim(),
-          githubConfirmed: formData.githubConfirmed
+          githubConfirmed: formData.githubConfirmed,
+          linkedinConfirmed: formData.linkedinConfirmed
         };
 
         // Clear local storage draft and step upon confirmed success
@@ -1684,7 +1806,8 @@ export default function RecruitmentApply({
           subRole: 'Frontend Developer',
           githubUsername: '',
           githubConfirmed: false,
-          linkedinUsername: ''
+          linkedinUsername: '',
+          linkedinConfirmed: false
         });
         setCurrentStep(1);
         setMaxReachedStep(1);
@@ -2891,12 +3014,19 @@ export default function RecruitmentApply({
                         onChange={handleInputChange}
                         onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); validateAndProceed(); } }}
                         placeholder="your-profile-slug"
-                        className={`w-full pl-10 pr-4 py-3 bg-white/[0.03] border rounded-xl text-white font-mono text-sm placeholder-zinc-600 focus:outline-none transition-colors ${
+                        className={`w-full pl-10 pr-10 py-3 bg-white/[0.03] border rounded-xl text-white font-mono text-sm placeholder-zinc-600 focus:outline-none transition-colors ${
                           stepErrors.linkedinUsername 
                             ? 'border-red-500' 
-                            : 'border-white/10 focus:border-[#FFCC00]'
+                            : formData.linkedinConfirmed
+                              ? 'border-emerald-500/60'
+                              : 'border-white/10 focus:border-[#FFCC00]'
                         }`}
                       />
+                      {formData.linkedinConfirmed && (
+                        <div className="absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none text-emerald-400">
+                          <Check className="w-4 h-4 stroke-[3]" />
+                        </div>
+                      )}
                     </div>
                     {stepErrors.linkedinUsername && (
                       <p className="text-[11px] text-red-400 font-mono flex items-center gap-1.5">
@@ -2916,9 +3046,17 @@ export default function RecruitmentApply({
                         Search Result (1 found)
                       </span>
                       <span className={`text-[11px] font-mono flex items-center gap-1 font-semibold ${
-                        formData.githubConfirmed ? 'text-[#FFCC00]' : 'text-amber-400/90'
+                        githubDuplicateError
+                          ? 'text-red-400'
+                          : formData.githubConfirmed
+                          ? 'text-[#FFCC00]'
+                          : 'text-amber-400/90'
                       }`}>
-                        {formData.githubConfirmed ? (
+                        {githubDuplicateError ? (
+                          <>
+                            <AlertCircle className="w-3 h-3 text-red-400" /> Already Registered
+                          </>
+                        ) : formData.githubConfirmed ? (
                           <>
                             <Check className="w-3 h-3 stroke-[3]" /> Profile Confirmed
                           </>
@@ -2933,8 +3071,28 @@ export default function RecruitmentApply({
                     {/* Interactive Selectable Profile Card */}
                     <div
                       role="button"
-                      tabIndex={0}
-                      onClick={() => {
+                      tabIndex={githubDuplicateError ? -1 : 0}
+                      onClick={async () => {
+                        if (!githubData) return;
+                        if (githubDuplicateError) {
+                          setStepErrors((prev) => ({
+                            ...prev,
+                            githubUsername: githubDuplicateError
+                          }));
+                          return;
+                        }
+                        if (!formData.githubConfirmed) {
+                          setCheckingGithubDuplicate(true);
+                          const cleanUser = formData.githubUsername.trim().replace(/^@/, '');
+                          const dup = await checkUniquenessApi(null, null, null, null, cleanUser, null);
+                          setCheckingGithubDuplicate(false);
+                          if (dup.exists && (dup.field === 'GitHub username' || !dup.field)) {
+                            const msg = dup.message || 'This GitHub username is already registered by another applicant.';
+                            setGithubDuplicateError(msg);
+                            setStepErrors((prev) => ({ ...prev, githubUsername: msg }));
+                            return;
+                          }
+                        }
                         setFormData((prev) => ({ ...prev, githubConfirmed: !prev.githubConfirmed }));
                         setStepErrors((prev) => {
                           const next = { ...prev };
@@ -2942,9 +3100,29 @@ export default function RecruitmentApply({
                           return next;
                         });
                       }}
-                      onKeyDown={(e) => {
+                      onKeyDown={async (e) => {
                         if (e.key === 'Enter' || e.key === ' ') {
                           e.preventDefault();
+                          if (!githubData) return;
+                          if (githubDuplicateError) {
+                            setStepErrors((prev) => ({
+                              ...prev,
+                              githubUsername: githubDuplicateError
+                            }));
+                            return;
+                          }
+                          if (!formData.githubConfirmed) {
+                            setCheckingGithubDuplicate(true);
+                            const cleanUser = formData.githubUsername.trim().replace(/^@/, '');
+                            const dup = await checkUniquenessApi(null, null, null, null, cleanUser, null);
+                            setCheckingGithubDuplicate(false);
+                            if (dup.exists && (dup.field === 'GitHub username' || !dup.field)) {
+                              const msg = dup.message || 'This GitHub username is already registered by another applicant.';
+                              setGithubDuplicateError(msg);
+                              setStepErrors((prev) => ({ ...prev, githubUsername: msg }));
+                              return;
+                            }
+                          }
                           setFormData((prev) => ({ ...prev, githubConfirmed: !prev.githubConfirmed }));
                           setStepErrors((prev) => {
                             const next = { ...prev };
@@ -2953,10 +3131,12 @@ export default function RecruitmentApply({
                           });
                         }
                       }}
-                      className={`group relative p-3.5 sm:p-4 rounded-xl border transition-all duration-200 cursor-pointer select-none flex items-center justify-between gap-4 ${
-                        formData.githubConfirmed
-                          ? 'bg-[#FFCC00]/[0.08] border-[#FFCC00] shadow-[0_0_24px_rgba(255,204,0,0.18)] ring-1 ring-[#FFCC00]/50'
-                          : 'bg-white/[0.02] border-white/10 hover:border-amber-400/50 hover:bg-white/[0.05]'
+                      className={`group relative p-3.5 sm:p-4 rounded-xl border transition-all duration-200 select-none flex items-center justify-between gap-4 ${
+                        githubDuplicateError
+                          ? 'border-red-500/40 bg-red-500/[0.03] cursor-not-allowed'
+                          : formData.githubConfirmed
+                          ? 'bg-[#FFCC00]/[0.08] border-[#FFCC00] shadow-[0_0_24px_rgba(255,204,0,0.18)] ring-1 ring-[#FFCC00]/50 cursor-pointer'
+                          : 'bg-white/[0.02] border-white/10 hover:border-amber-400/50 hover:bg-white/[0.05] cursor-pointer'
                       }`}
                     >
                       <div className="flex items-center gap-3.5 min-w-0">
@@ -2966,12 +3146,21 @@ export default function RecruitmentApply({
                             src={githubData.avatar_url} 
                             alt={githubData.login} 
                             className={`w-11 h-11 sm:w-12 sm:h-12 rounded-xl border object-cover transition-colors ${
-                              formData.githubConfirmed ? 'border-[#FFCC00]/60' : 'border-white/10'
+                              githubDuplicateError
+                                ? 'border-red-500/50'
+                                : formData.githubConfirmed 
+                                ? 'border-[#FFCC00]/60' 
+                                : 'border-white/10'
                             }`}
                           />
-                          {formData.githubConfirmed && (
+                          {formData.githubConfirmed && !githubDuplicateError && (
                             <div className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-[#FFCC00] text-black flex items-center justify-center shadow-md">
                               <Check className="w-3 h-3 stroke-[3]" />
+                            </div>
+                          )}
+                          {githubDuplicateError && (
+                            <div className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-red-500 text-white flex items-center justify-center shadow-md">
+                              <AlertCircle className="w-3 h-3 stroke-[3]" />
                             </div>
                           )}
                         </div>
@@ -2982,7 +3171,11 @@ export default function RecruitmentApply({
                             <span className="text-white font-bold text-sm truncate font-mono">
                               {githubData.name || githubData.login}
                             </span>
-                            {formData.githubConfirmed ? (
+                            {githubDuplicateError ? (
+                              <span className="px-2 py-0.5 rounded-md bg-red-500/10 border border-red-500/30 text-red-400 font-mono text-[10px] tracking-wider uppercase font-bold">
+                                Already Registered
+                              </span>
+                            ) : formData.githubConfirmed ? (
                               <span className="px-2 py-0.5 rounded-md bg-[#FFCC00]/20 border border-[#FFCC00]/40 text-[#FFCC00] font-mono text-[10px] font-bold tracking-wider uppercase inline-flex items-center gap-1">
                                 <Check className="w-2.5 h-2.5 stroke-[3]" /> Selected
                               </span>
@@ -3011,12 +3204,16 @@ export default function RecruitmentApply({
                         {/* Radio Check Circle */}
                         <div 
                           className={`w-6 h-6 rounded-full border flex items-center justify-center transition-all ${
-                            formData.githubConfirmed
+                            githubDuplicateError
+                              ? 'border-red-500/40 bg-red-500/10 text-red-400 cursor-not-allowed'
+                              : formData.githubConfirmed
                               ? 'bg-[#FFCC00] border-[#FFCC00] text-black'
                               : 'border-white/20 bg-white/5 group-hover:border-amber-400/50'
                           }`}
                         >
-                          {formData.githubConfirmed ? (
+                          {githubDuplicateError ? (
+                            <AlertCircle className="w-3.5 h-3.5" />
+                          ) : formData.githubConfirmed ? (
                             <Check className="w-3.5 h-3.5 stroke-[3]" />
                           ) : (
                             <div className="w-2 h-2 rounded-full bg-transparent group-hover:bg-amber-400/40 transition-colors" />
@@ -3039,7 +3236,12 @@ export default function RecruitmentApply({
 
                     {/* Helper status text below card */}
                     <div className="flex items-center justify-between px-1">
-                      {formData.githubConfirmed ? (
+                      {githubDuplicateError ? (
+                        <p className="text-[11px] text-red-400 font-mono flex items-center gap-1.5">
+                          <AlertCircle className="w-3.5 h-3.5 text-red-400 shrink-0" />
+                          {githubDuplicateError}
+                        </p>
+                      ) : formData.githubConfirmed ? (
                         <p className="text-[11px] text-emerald-400 font-mono flex items-center gap-1.5">
                           <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
                           GitHub profile confirmed and connected to your application.
@@ -3053,6 +3255,284 @@ export default function RecruitmentApply({
                     </div>
                   </div>
                 )}
+
+                {/* Interactive LinkedIn Profile Validation Card */}
+                {Boolean(formData.linkedinUsername?.trim()) && (() => {
+                  const cleanSlug = normalizeLinkedinSlug(formData.linkedinUsername);
+                  const isFormatValid = isValidLinkedinSlug(cleanSlug);
+                  const canonicalUrl = `https://www.linkedin.com/in/${cleanSlug}/`;
+
+                  return (
+                    <div className="space-y-2 pt-1 animate-step-enter">
+                      <div className="flex items-center justify-between text-[11px] font-mono">
+                        <span className="text-zinc-400 uppercase tracking-wider flex items-center gap-1.5 font-semibold">
+                          <Linkedin className="w-3.5 h-3.5 text-[#0A66C2]" />
+                          LinkedIn Profile Link
+                        </span>
+                        <span className={`text-[11px] font-mono flex items-center gap-1 font-semibold ${
+                          linkedinDuplicateError
+                            ? 'text-red-400'
+                            : formData.linkedinConfirmed
+                            ? 'text-[#FFCC00]'
+                            : linkedinValidated
+                            ? 'text-amber-400'
+                            : 'text-zinc-400'
+                        }`}>
+                          {linkedinDuplicateError ? (
+                            <>
+                              <AlertCircle className="w-3 h-3 text-red-400" /> Already Registered
+                            </>
+                          ) : formData.linkedinConfirmed ? (
+                            <>
+                              <Check className="w-3 h-3 stroke-[3]" /> Profile Confirmed
+                            </>
+                          ) : linkedinValidated ? (
+                            <>
+                              <AlertCircle className="w-3 h-3" /> Check Box Below to Confirm
+                            </>
+                          ) : (
+                            <>
+                              <AlertCircle className="w-3 h-3 text-amber-400" /> Click Validate to Unlock
+                            </>
+                          )}
+                        </span>
+                      </div>
+
+                      {/* LinkedIn Profile Info Card */}
+                      <div
+                        className={`relative p-3.5 sm:p-4 rounded-xl border transition-all duration-200 flex items-center justify-between gap-4 ${
+                          linkedinDuplicateError
+                            ? 'border-red-500/40 bg-red-500/[0.03]'
+                            : formData.linkedinConfirmed
+                            ? 'bg-[#FFCC00]/[0.05] border-[#FFCC00]/40 shadow-[0_0_20px_rgba(255,204,0,0.12)]'
+                            : 'bg-white/[0.02] border-white/10'
+                        }`}
+                      >
+                        <div className="flex items-center gap-3.5 min-w-0">
+                          {/* Profile Badge Icon */}
+                          <div className="relative shrink-0">
+                            <div className={`w-11 h-11 sm:w-12 sm:h-12 rounded-xl border flex items-center justify-center transition-colors ${
+                              linkedinDuplicateError
+                                ? 'bg-red-500/10 border-red-500/30 text-red-400'
+                                : formData.linkedinConfirmed 
+                                ? 'bg-[#0A66C2]/20 border-[#FFCC00]/60 text-[#0A66C2]' 
+                                : 'bg-[#0A66C2]/10 border-white/10 text-[#0A66C2]'
+                            }`}>
+                              <Linkedin className="w-6 h-6" />
+                            </div>
+                            {formData.linkedinConfirmed && !linkedinDuplicateError && (
+                              <div className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-[#FFCC00] text-black flex items-center justify-center shadow-md">
+                                <Check className="w-3 h-3 stroke-[3]" />
+                              </div>
+                            )}
+                            {linkedinDuplicateError && (
+                              <div className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-red-500 text-white flex items-center justify-center shadow-md">
+                                <AlertCircle className="w-3 h-3 stroke-[3]" />
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Profile Details (Handle & Format status - Raw URL omitted) */}
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="text-white font-bold text-sm truncate font-mono">
+                                in/{cleanSlug}
+                              </span>
+                              {linkedinDuplicateError ? (
+                                <span className="px-2 py-0.5 rounded-md bg-red-500/10 border border-red-500/30 text-red-400 font-mono text-[10px] tracking-wider uppercase font-bold">
+                                  Already Registered
+                                </span>
+                              ) : formData.linkedinConfirmed ? (
+                                <span className="px-2 py-0.5 rounded-md bg-[#FFCC00]/20 border border-[#FFCC00]/40 text-[#FFCC00] font-mono text-[10px] font-bold tracking-wider uppercase inline-flex items-center gap-1">
+                                  <Check className="w-2.5 h-2.5 stroke-[3]" /> Confirmed
+                                </span>
+                              ) : !isFormatValid ? (
+                                <span className="px-2 py-0.5 rounded-md bg-red-500/10 border border-red-500/30 text-red-400 font-mono text-[10px] tracking-wider uppercase">
+                                  Invalid Handle
+                                </span>
+                              ) : linkedinValidated ? (
+                                <span className="px-2 py-0.5 rounded-md bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 font-mono text-[10px] tracking-wider uppercase">
+                                  Validated
+                                </span>
+                              ) : (
+                                <span className="px-2 py-0.5 rounded-md bg-white/5 border border-white/10 text-zinc-400 font-mono text-[10px] tracking-wider uppercase">
+                                  Validate First
+                                </span>
+                              )}
+                            </div>
+                            <div className="flex items-center gap-2 text-xs font-mono mt-0.5">
+                              <span className={isFormatValid ? 'text-emerald-400' : 'text-red-400'}>
+                                {isFormatValid ? 'Format Valid' : 'Format Invalid'}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Right Action: Validate Button */}
+                        <div className="shrink-0">
+                          <a
+                            href={isFormatValid ? canonicalUrl : undefined}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            onClick={(e) => {
+                              if (!isFormatValid) {
+                                e.preventDefault();
+                                return;
+                              }
+                              setLinkedinValidated(true);
+                              setStepErrors((prev) => {
+                                const next = { ...prev };
+                                delete next.linkedinUsername;
+                                return next;
+                              });
+                            }}
+                            className={`px-3 py-1.5 rounded-lg border font-mono text-xs flex items-center gap-1.5 transition-all shadow-sm ${
+                              !isFormatValid
+                                ? 'bg-white/5 border-white/10 text-zinc-500 cursor-not-allowed opacity-50'
+                                : !linkedinValidated
+                                ? 'bg-[#0A66C2]/20 border-[#0A66C2]/60 text-white hover:bg-[#0A66C2]/35 hover:border-[#0A66C2] shadow-[0_0_12px_rgba(10,102,194,0.3)] ring-1 ring-[#0A66C2]/40'
+                                : 'bg-[#0A66C2]/15 border-[#0A66C2]/40 hover:bg-[#0A66C2]/30 text-white'
+                            }`}
+                            title={
+                              isFormatValid
+                                ? "Open profile in a new tab to verify it does not 404"
+                                : "Enter a valid LinkedIn username first"
+                            }
+                          >
+                            <span>Validate</span>
+                            <ExternalLink className="w-3.5 h-3.5 text-[#38BDF8]" />
+                          </a>
+                        </div>
+                      </div>
+
+                      {/* Confirmation Checkbox */}
+                      <label
+                        className={`flex items-center gap-3 p-3.5 rounded-xl border transition-all select-none ${
+                          !isFormatValid || !linkedinValidated || Boolean(linkedinDuplicateError)
+                            ? 'bg-white/[0.01] border-white/5 opacity-50 cursor-not-allowed'
+                            : formData.linkedinConfirmed
+                            ? 'bg-[#FFCC00]/[0.08] border-[#FFCC00]/50 shadow-[0_0_16px_rgba(255,204,0,0.12)] cursor-pointer'
+                            : 'bg-white/[0.02] border-white/10 hover:border-amber-400/40 hover:bg-white/[0.04] cursor-pointer'
+                        }`}
+                        onClick={async (e) => {
+                          if (!isFormatValid) {
+                            e.preventDefault();
+                            return;
+                          }
+                          if (!linkedinValidated) {
+                            e.preventDefault();
+                            setStepErrors((prev) => ({
+                              ...prev,
+                              linkedinUsername: 'Please click "Validate" first to test your profile in a new tab.'
+                            }));
+                            return;
+                          }
+                          if (linkedinDuplicateError) {
+                            e.preventDefault();
+                            setStepErrors((prev) => ({
+                              ...prev,
+                              linkedinUsername: linkedinDuplicateError
+                            }));
+                            return;
+                          }
+                        }}
+                      >
+                        <div className="relative flex items-center justify-center shrink-0">
+                          <input
+                            type="checkbox"
+                            checked={formData.linkedinConfirmed}
+                            disabled={!isFormatValid || !linkedinValidated || Boolean(linkedinDuplicateError)}
+                            onChange={async (e) => {
+                              if (!isFormatValid || !linkedinValidated) return;
+                              if (e.target.checked) {
+                                if (linkedinDuplicateError) {
+                                  setStepErrors((prev) => ({ ...prev, linkedinUsername: linkedinDuplicateError }));
+                                  return;
+                                }
+                                setCheckingLinkedinDuplicate(true);
+                                const dup = await checkUniquenessApi(null, null, null, null, null, cleanSlug);
+                                setCheckingLinkedinDuplicate(false);
+                                if (dup.exists && (dup.field === 'LinkedIn profile' || !dup.field)) {
+                                  const msg = dup.message || 'This LinkedIn profile is already registered by another applicant.';
+                                  setLinkedinDuplicateError(msg);
+                                  setStepErrors((prev) => ({ ...prev, linkedinUsername: msg }));
+                                  return;
+                                }
+                                setFormData((prev) => ({ ...prev, linkedinConfirmed: true }));
+                                setStepErrors((prev) => {
+                                  const next = { ...prev };
+                                  delete next.linkedinUsername;
+                                  return next;
+                                });
+                              } else {
+                                setFormData((prev) => ({ ...prev, linkedinConfirmed: false }));
+                              }
+                            }}
+                            className="sr-only"
+                          />
+                          <div
+                            className={`w-5 h-5 rounded-md border flex items-center justify-center transition-all ${
+                              formData.linkedinConfirmed
+                                ? 'bg-[#FFCC00] border-[#FFCC00] text-black shadow-sm'
+                                : !linkedinValidated || !isFormatValid || Boolean(linkedinDuplicateError)
+                                ? 'border-white/15 bg-white/[0.02]'
+                                : 'border-white/30 bg-white/5 hover:border-amber-400'
+                            }`}
+                          >
+                            {formData.linkedinConfirmed && (
+                              <Check className="w-3.5 h-3.5 stroke-[3]" />
+                            )}
+                          </div>
+                        </div>
+
+                        <div className="text-xs font-mono select-none">
+                          <span className={`font-medium ${formData.linkedinConfirmed ? 'text-white' : 'text-zinc-300'}`}>
+                            I confirm this is my LinkedIn profile
+                          </span>
+                          {linkedinDuplicateError ? (
+                            <span className="block text-[10px] text-red-400 mt-0.5">
+                              (This profile is already registered and cannot be selected)
+                            </span>
+                          ) : !linkedinValidated && isFormatValid ? (
+                            <span className="block text-[10px] text-amber-400/90 mt-0.5">
+                              (Click &quot;Validate&quot; above first to enable confirmation)
+                            </span>
+                          ) : null}
+                        </div>
+                      </label>
+
+                      {/* Helper status text below card */}
+                      <div className="flex items-center justify-between px-1">
+                        {linkedinDuplicateError ? (
+                          <p className="text-[11px] text-red-400 font-mono flex items-center gap-1.5">
+                            <AlertCircle className="w-3.5 h-3.5 text-red-400 shrink-0" />
+                            {linkedinDuplicateError}
+                          </p>
+                        ) : formData.linkedinConfirmed ? (
+                          <p className="text-[11px] text-emerald-400 font-mono flex items-center gap-1.5">
+                            <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
+                            LinkedIn profile confirmed and connected to your application.
+                          </p>
+                        ) : !linkedinValidated ? (
+                          <p className="text-[11px] text-zinc-400 font-mono flex items-center gap-1.5">
+                            <AlertCircle className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                            Click <strong>Validate</strong> to test your profile in a new tab first.
+                          </p>
+                        ) : isFormatValid ? (
+                          <p className="text-[11px] text-amber-300 font-mono flex items-center gap-1.5">
+                            <AlertCircle className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                            Profile opened in new tab. Check the box above if it loaded without a 404 error.
+                          </p>
+                        ) : (
+                          <p className="text-[11px] text-red-400 font-mono flex items-center gap-1.5">
+                            <AlertCircle className="w-3.5 h-3.5 text-red-400 shrink-0" />
+                            LinkedIn handle must be 3–100 characters and contain only letters, numbers, and hyphens.
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })()}
               </div>
             )}
 
@@ -3451,7 +3931,20 @@ export default function RecruitmentApply({
                             <span className="text-[10px] text-zinc-400 block uppercase tracking-wider">LinkedIn Profile</span>
                             <span className="text-white font-medium text-xs flex items-center gap-1.5 mt-0.5 truncate">
                               <Linkedin className="w-3.5 h-3.5 text-[#0A66C2] shrink-0" />
-                              {formData.linkedinUsername || '—'}
+                              {formData.linkedinUsername ? (
+                                <span className="inline-flex items-center gap-1.5 flex-wrap">
+                                  <span>in/{formData.linkedinUsername}</span>
+                                  {formData.linkedinConfirmed ? (
+                                    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-[#FFCC00]/15 border border-[#FFCC00]/30 text-[#FFCC00] text-[9px] font-mono font-semibold">
+                                      <Check className="w-2.5 h-2.5 stroke-[2.5]" /> Verified
+                                    </span>
+                                  ) : (
+                                    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-zinc-500/15 border border-zinc-500/30 text-zinc-400 text-[9px] font-mono">
+                                      Unconfirmed
+                                    </span>
+                                  )}
+                                </span>
+                              ) : '—'}
                             </span>
                           </div>
                         </div>
@@ -3543,9 +4036,9 @@ export default function RecruitmentApply({
       </section>
 
       {/* RECRUITMENT ASSISTANCE / REACH US POPUP MODAL */}
-      {showHelpModal && (
+      {showHelpModal && typeof document !== 'undefined' && createPortal(
         <div 
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-fade-in"
+          className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6 bg-black/80 backdrop-blur-md animate-fade-in"
           onClick={() => setShowHelpModal(false)}
         >
           <div 
@@ -3580,65 +4073,55 @@ export default function RecruitmentApply({
 
             {/* Contacts List */}
             <div className="space-y-2.5">
-              {RECRUITMENT_CONTACTS.map((contact, idx) => {
-                const isCopied = copiedPhoneIndex === idx;
-                return (
-                  <div
-                    key={contact.name}
-                    className="p-3.5 rounded-2xl bg-white/[0.02] hover:bg-white/[0.05] border border-white/10 hover:border-[#FFCC00]/40 transition-all duration-200 flex items-center justify-between gap-3"
-                  >
-                    <div className="flex items-center gap-3 min-w-0">
-                      <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-zinc-800 to-zinc-950 border border-white/15 flex items-center justify-center font-mono font-bold text-sm text-[#FFCC00] shrink-0 shadow-inner">
-                        {contact.name.charAt(0)}
-                      </div>
-                      <div className="min-w-0">
-                        <span className="text-white font-semibold text-sm font-mono block truncate">
-                          {contact.name}
-                        </span>
-                        <span className="text-zinc-400 text-xs font-mono block mt-0.5 tracking-wider">
-                          {contact.displayPhone}
-                        </span>
-                      </div>
+              {RECRUITMENT_CONTACTS.map((contact) => (
+                <div
+                  key={contact.name}
+                  className="p-3.5 rounded-2xl bg-white/[0.02] hover:bg-white/[0.05] border border-white/10 hover:border-[#FFCC00]/40 transition-all duration-200 flex items-center justify-between gap-3"
+                >
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-zinc-800 to-zinc-950 border border-white/15 flex items-center justify-center font-mono font-bold text-sm text-[#FFCC00] shrink-0 shadow-inner">
+                      {contact.name.charAt(0)}
                     </div>
-
-                    <div className="flex items-center gap-1.5 shrink-0">
-                      {/* Copy number button */}
-                      <button
-                        type="button"
-                        onClick={() => handleCopyPhone(contact.phone, idx)}
-                        className={`px-2.5 py-1.5 rounded-lg border text-xs font-mono flex items-center gap-1.5 transition-all cursor-pointer ${
-                          isCopied 
-                            ? 'bg-emerald-500/20 border-emerald-500/50 text-emerald-300' 
-                            : 'bg-white/5 hover:bg-white/10 border-white/10 text-zinc-300 hover:text-white'
-                        }`}
-                        title="Copy mobile number"
-                      >
-                        {isCopied ? (
-                          <>
-                            <Check className="w-3 h-3 text-emerald-400" />
-                            <span className="text-[11px]">Copied</span>
-                          </>
-                        ) : (
-                          <>
-                            <Copy className="w-3 h-3 text-zinc-400" />
-                            <span className="text-[11px] hidden sm:inline">Copy</span>
-                          </>
-                        )}
-                      </button>
-
-                      {/* Call direct link */}
-                      <a
-                        href={`tel:+91${contact.phone.replace(/\D/g, '')}`}
-                        className="px-3 py-1.5 rounded-lg bg-[#FFCC00]/15 hover:bg-[#FFCC00]/25 border border-[#FFCC00]/30 hover:border-[#FFCC00]/60 text-[#FFCC00] text-xs font-mono flex items-center gap-1.5 transition-all"
-                        title="Call directly"
-                      >
-                        <Phone className="w-3 h-3" />
-                        <span className="text-[11px] font-semibold">Call</span>
-                      </a>
+                    <div className="min-w-0">
+                      <span className="text-white font-semibold text-sm font-mono block truncate">
+                        {contact.name}
+                      </span>
+                      <span className="text-zinc-400 text-xs font-mono block mt-0.5 tracking-wider">
+                        {contact.displayPhone}
+                      </span>
                     </div>
                   </div>
-                );
-              })}
+
+                  <div className="flex items-center gap-2 shrink-0">
+                    {/* WhatsApp direct link */}
+                    <a
+                      href={`https://wa.me/91${contact.phone.replace(/\D/g, '')}?text=${encodeURIComponent(`Hi ${contact.name}, I need help regarding the Celestius recruitment application.`)}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="px-2.5 sm:px-3 py-1.5 rounded-lg bg-[#25D366]/15 hover:bg-[#25D366]/25 border border-[#25D366]/30 hover:border-[#25D366]/60 text-[#25D366] text-xs font-mono flex items-center gap-1.5 transition-all shadow-sm group/wa"
+                      title={`Chat with ${contact.name} on WhatsApp`}
+                    >
+                      <svg 
+                        viewBox="0 0 24 24" 
+                        className="w-3.5 h-3.5 fill-current shrink-0 group-hover/wa:scale-110 transition-transform"
+                      >
+                        <path d="M17.472 14.382c-.301-.15-1.78-.878-2.056-.978-.276-.1-.476-.15-.677.15-.2.301-.777.978-.952 1.179-.175.2-.351.226-.652.075-.301-.15-1.272-.469-2.423-1.496-.896-.799-1.5-1.786-1.676-2.087-.175-.301-.019-.464.132-.614.136-.135.301-.351.451-.527.151-.175.201-.3.301-.501.101-.2.05-.376-.025-.526-.075-.15-.677-1.633-.928-2.235-.245-.586-.494-.506-.677-.516-.175-.01-.376-.01-.577-.01s-.527.075-.802.376c-.276.301-1.053 1.028-1.053 2.508 0 1.479 1.078 2.908 1.228 3.109.15.2 2.122 3.24 5.141 4.544.718.31 1.279.496 1.716.635.721.23 1.377.198 1.896.12.578-.087 1.78-.727 2.03-1.429.251-.702.251-1.304.176-1.429-.075-.125-.276-.2-.577-.35zM12.042 21.84c-1.77 0-3.504-.475-5.029-1.375l-.36-.213-3.738.98.997-3.644-.235-.374a9.78 9.78 0 0 1-1.502-5.234c0-5.419 4.409-9.828 9.832-9.828 2.625 0 5.093 1.023 6.949 2.88 1.856 1.856 2.878 4.325 2.877 6.95 0 5.42-4.408 9.83-9.786 9.83zm0-17.75c-4.367 0-7.92 3.553-7.92 7.92 0 1.396.365 2.76 1.058 3.966l.164.286-.628 2.296 2.348-.616.276.164a7.886 7.886 0 0 0 4.698 1.5c4.366 0 7.92-3.554 7.92-7.92 0-2.115-.824-4.103-2.32-5.598a7.883 7.883 0 0 0-5.596-2.098z"/>
+                      </svg>
+                      <span className="text-[11px] font-semibold">WhatsApp</span>
+                    </a>
+
+                    {/* Call direct link */}
+                    <a
+                      href={`tel:+91${contact.phone.replace(/\D/g, '')}`}
+                      className="px-2.5 sm:px-3 py-1.5 rounded-lg bg-[#FFCC00]/15 hover:bg-[#FFCC00]/25 border border-[#FFCC00]/30 hover:border-[#FFCC00]/60 text-[#FFCC00] text-xs font-mono flex items-center gap-1.5 transition-all shadow-sm"
+                      title={`Call ${contact.name}`}
+                    >
+                      <Phone className="w-3.5 h-3.5 shrink-0" />
+                      <span className="text-[11px] font-semibold">Call</span>
+                    </a>
+                  </div>
+                </div>
+              ))}
             </div>
 
             {/* Note / Action footer */}
@@ -3653,7 +4136,8 @@ export default function RecruitmentApply({
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
     </div>
