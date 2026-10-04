@@ -35,6 +35,18 @@ export const registerUser = async (req, res) => {
           error: "Recruitment is currently closed.",
         });
       }
+
+      // Check if candidate is applying for a role that is specifically closed (e.g. Backend Developer)
+      const closedRoles = Array.isArray(config.closedRoles) ? config.closedRoles : ['Backend Developer'];
+      const targetSubRole = (req.body.subRole || '').trim();
+      if (closedRoles.includes(targetSubRole)) {
+        return res.status(403).json({
+          success: false,
+          roleClosed: true,
+          message: `Applications for the ${targetSubRole} role are officially closed. Please choose another role.`,
+          error: "Selected role is closed.",
+        });
+      }
     } catch (configErr) {
       console.error("Could not query recruitment config, refusing registration for safety:", configErr.message);
       return res.status(503).json({

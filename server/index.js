@@ -37,23 +37,34 @@ const connectDB = async () => {
     cachedConnection = conn;
     console.log('✓ [DATABASE] MongoDB connected successfully');
 
-    // Ensure recruitment config document exists and has registrationCloseDate physically written to MongoDB
+    // Ensure recruitment config document exists and has registrationCloseDate & closedRoles physically written to MongoDB
     try {
       const defaultCloseDate = new Date("2026-10-15T23:59:59+05:30");
+      const defaultClosedRoles = ["Backend Developer"];
       const existingConfig = await Config.findOne({ key: 'recruitment_config' }).lean();
       if (!existingConfig) {
         await Config.create({
           key: 'recruitment_config',
           recruitmentOpenStatus: true,
           registrationCloseDate: defaultCloseDate,
+          closedRoles: defaultClosedRoles,
         });
-        console.log('✓ [DATABASE] Initialized recruitment_config document with recruitmentOpenStatus: true and registrationCloseDate: Oct 15 2026');
-      } else if (!existingConfig.registrationCloseDate) {
-        await Config.updateOne(
-          { key: 'recruitment_config' },
-          { $set: { registrationCloseDate: defaultCloseDate } }
-        );
-        console.log('✓ [DATABASE] Updated existing recruitment_config document with default registrationCloseDate in MongoDB: Oct 15 2026');
+        console.log('✓ [DATABASE] Initialized recruitment_config document with recruitmentOpenStatus: true, registrationCloseDate, and closedRoles: [Backend Developer]');
+      } else {
+        const updateFields = {};
+        if (!existingConfig.registrationCloseDate) {
+          updateFields.registrationCloseDate = defaultCloseDate;
+        }
+        if (!existingConfig.closedRoles || !Array.isArray(existingConfig.closedRoles)) {
+          updateFields.closedRoles = defaultClosedRoles;
+        }
+        if (Object.keys(updateFields).length > 0) {
+          await Config.updateOne(
+            { key: 'recruitment_config' },
+            { $set: updateFields }
+          );
+          console.log('✓ [DATABASE] Updated existing recruitment_config document with fields:', Object.keys(updateFields).join(', '));
+        }
       }
     } catch (cfgErr) {
       console.warn('! [DATABASE] Could not verify recruitment_config initialization:', cfgErr.message);
@@ -125,6 +136,7 @@ app.get('/api/recruitment/status', async (req, res) => {
     return res.status(200).json({
       success: true,
       recruitmentOpenStatus,
+      closedRoles: Array.isArray(config.closedRoles) ? config.closedRoles : ['Backend Developer'],
     });
   } catch (error) {
     console.error("Error fetching recruitment status:", error);
@@ -132,20 +144,25 @@ app.get('/api/recruitment/status', async (req, res) => {
     return res.status(503).json({
       success: false,
       recruitmentOpenStatus: false,
+      closedRoles: ['Backend Developer'],
       error: "Backend database disconnected",
       message: "Recruitment status currently unavailable. Defaulting to closed.",
     });
   }
 });
 
-// Update Recruitment Open Status & Deadline API
+// Update Recruitment Open Status, Deadline & Closed Roles API
 app.post('/api/recruitment/status', async (req, res) => {
   try {
-    const { recruitmentOpenStatus, registrationCloseDate } = req.body;
+    const { recruitmentOpenStatus, registrationCloseDate, closedRoles } = req.body;
     const update = {};
 
     if (typeof recruitmentOpenStatus === 'boolean') {
       update.recruitmentOpenStatus = recruitmentOpenStatus;
+    }
+
+    if (Array.isArray(closedRoles)) {
+      update.closedRoles = closedRoles;
     }
 
     if (registrationCloseDate) {
@@ -162,7 +179,7 @@ app.post('/api/recruitment/status', async (req, res) => {
     if (Object.keys(update).length === 0) {
       return res.status(400).json({
         success: false,
-        message: "Provide recruitmentOpenStatus (boolean) and/or registrationCloseDate (ISO date string).",
+        message: "Provide recruitmentOpenStatus (boolean), registrationCloseDate (ISO date string), and/or closedRoles (array of strings).",
       });
     }
 

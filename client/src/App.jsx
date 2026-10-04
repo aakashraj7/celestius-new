@@ -67,6 +67,7 @@ export default function App() {
   // Global recruitment open status control step
   // Strictly defaults to false (closed) so if backend is disconnected, applications remain closed
   const [recruitmentOpenStatus, setRecruitmentOpenStatus] = useState(false);
+  const [closedRoles, setClosedRoles] = useState(['Backend Developer']);
   const [recruitmentStatusLoading, setRecruitmentStatusLoading] = useState(true);
 
   useEffect(() => {
@@ -86,6 +87,9 @@ export default function App() {
                 setRecruitmentOpenStatus(data.recruitmentOpenStatus);
               } else {
                 setRecruitmentOpenStatus(false);
+              }
+              if (data && Array.isArray(data.closedRoles)) {
+                setClosedRoles(data.closedRoles);
               }
             }
             return;
@@ -270,6 +274,7 @@ export default function App() {
                 introCompleted={introCompleted} 
                 setActivePage={handlePageChange}
                 recruitmentOpenStatus={recruitmentOpenStatus}
+                closedRoles={closedRoles}
                 recruitmentStatusLoading={recruitmentStatusLoading}
               />
             )}
@@ -278,6 +283,7 @@ export default function App() {
                 introCompleted={introCompleted} 
                 setActivePage={handlePageChange}
                 recruitmentOpenStatus={recruitmentOpenStatus}
+                closedRoles={closedRoles}
                 recruitmentStatusLoading={recruitmentStatusLoading}
               />
             )}
