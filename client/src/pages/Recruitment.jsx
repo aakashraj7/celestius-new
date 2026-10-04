@@ -377,7 +377,12 @@ const renderSkillLogo = (skill) => {
   return <Sparkles className="w-4 h-4 text-zinc-400 shrink-0" />;
 };
 
-export default function Recruitment({ introCompleted = true, setActivePage, recruitmentOpenStatus = true }) {
+export default function Recruitment({ 
+  introCompleted = true, 
+  setActivePage, 
+  recruitmentOpenStatus = false,
+  recruitmentStatusLoading = false
+}) {
   const [activeDivision, setActiveDivision] = useState('all');
   const [selectedRole, setSelectedRole] = useState(null);
 
@@ -390,10 +395,10 @@ export default function Recruitment({ introCompleted = true, setActivePage, recr
   ];
 
   const closedPhrases = [
-    "STAY TUNED FOR APPLYING.",
-    "GET READY FOR JOINING THE CREW.",
-    "PREPARE YOUR PORTFOLIO & TRACKS.",
-    "APPLICATIONS OPENING SOON."
+    "RECRUITMENT APPLICATIONS ARE CURRENTLY CLOSED.",
+    "THANK YOU FOR YOUR INTEREST.",
+    "CANDIDATE SHORTLISTS ROLLING OUT SOON.",
+    "STAY TUNED FOR RESULTS & NEXT INTAKE."
   ];
 
   const phrases = recruitmentOpenStatus ? activePhrases : closedPhrases;
@@ -495,17 +500,19 @@ export default function Recruitment({ introCompleted = true, setActivePage, recr
       <section className="relative space-y-6 pt-2 pb-2">
         <div className="space-y-5 max-w-4xl">
           <ScrollReveal animation="fade-down" delay={0}>
-            <div className="flex items-center gap-2.5 font-mono text-xs">
+            <div className="flex flex-wrap items-center gap-2.5 font-mono text-xs">
               {recruitmentOpenStatus ? (
                 <>
-                  <span className="w-2 h-2 rounded-full bg-[#FFCC00] animate-pulse" />
-                  <span className="tracking-widest uppercase font-bold text-[#FFCC00]">CELESTIUS RECRUITMENTS</span>
+                  <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-[#FFCC00]/10 border border-[#FFCC00]/30 shadow-sm">
+                    <span className="w-2 h-2 rounded-full bg-[#FFCC00] animate-pulse" />
+                    <span className="tracking-widest uppercase font-bold text-[#FFCC00]">REGISTRATIONS WILL BE CLOSING SHORTLY</span>
+                  </div>
                 </>
               ) : (
-                <>
+                <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-amber-500/10 border border-amber-500/30 font-mono text-xs">
                   <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
-                  <span className="tracking-widest uppercase font-bold text-amber-400">RECRUITMENTS CURRENTLY PAUSED • STAY TUNED </span>
-                </>
+                  <span className="tracking-widest uppercase font-bold text-amber-400">RECRUITMENTS CLOSED • STAY TUNED</span>
+                </div>
               )}
             </div>
           </ScrollReveal>
@@ -526,11 +533,11 @@ export default function Recruitment({ introCompleted = true, setActivePage, recr
           <ScrollReveal animation="fade-up" delay={160}>
             {recruitmentOpenStatus ? (
               <p className="text-sm sm:text-base text-zinc-300 font-sans leading-relaxed max-w-3xl">
-                Celestius recruitments are now officially live. Explore our Technical and Non-Technical divisions, review role mandates, and launch the multi-step application console.
+                Celestius recruitments are now officially live. Explore our Technical and Non-Technical divisions, review role mandates, and launch the multi-step application console. Registrations will be closing soon!
               </p>
             ) : (
               <p className="text-sm sm:text-base text-zinc-300 font-sans leading-relaxed max-w-3xl">
-                Recruitment applications are currently closed. Get ready for joining the crew and stay tuned for the next official intake announcement! In the meantime, explore our divisions and role mandates below.
+                Recruitment applications for this cohort are currently closed. Review our divisions and role mandates below, and stay tuned for candidate shortlists and the next official intake announcement!
               </p>
             )}
           </ScrollReveal>
@@ -552,9 +559,9 @@ export default function Recruitment({ introCompleted = true, setActivePage, recr
                   <span>APPLY NOW</span>
                 </button>
               ) : (
-                <div className="px-6 py-3.5 rounded-xl bg-white/5 border border-amber-500/30 text-amber-300 font-mono text-sm font-bold uppercase tracking-wider flex items-center gap-2.5 shadow-[0_0_20px_rgba(245,158,11,0.15)] select-none">
-                  <Clock className="w-4 h-4 text-amber-400" />
-                  <span>STAY TUNED • APPLICATIONS OPENING SOON</span>
+                <div className="px-6 py-3.5 rounded-xl bg-white/5 border border-white/10 text-zinc-400 font-mono text-sm font-bold uppercase tracking-wider flex items-center gap-2.5 shadow-sm select-none">
+                  <Clock className="w-4 h-4 text-zinc-500" />
+                  <span>APPLICATIONS CLOSED FOR THIS CYCLE</span>
                 </div>
               )}
 

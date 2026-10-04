@@ -939,7 +939,7 @@ export const isValidLinkedinSlug = (slug) => {
 export default function RecruitmentApply({ 
   introCompleted = true, 
   setActivePage,
-  recruitmentOpenStatus = true,
+  recruitmentOpenStatus = false,
   recruitmentStatusLoading = false
 }) {
   // Track whether the intro animation was running when this page mounted
@@ -1922,7 +1922,7 @@ export default function RecruitmentApply({
             {/* Status Tag */}
             <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/5 border border-amber-500/30 font-mono text-xs">
               <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
-              <span className="text-amber-300 font-bold uppercase tracking-wider">[ RECRUITMENT APPLICATIONS PAUSED ]</span>
+              <span className="text-amber-300 font-bold uppercase tracking-wider">[ RECRUITMENT APPLICATIONS CLOSED ]</span>
             </div>
           </div>
 
@@ -1932,13 +1932,13 @@ export default function RecruitmentApply({
               className="font-ndot text-4xl sm:text-6xl text-white tracking-wide uppercase leading-tight"
               style={{ fontFamily: "'VT323', monospace" }}
             >
-              STAY TUNED FOR APPLYING.
+              APPLICATIONS ARE CLOSED.
             </h1>
             <p className="font-mono text-sm sm:text-base text-[#FFCC00] uppercase tracking-wider font-semibold">
-              // GET READY FOR JOINING THE CREW.
+              // REGISTRATIONS ARE NOW CLOSED.
             </p>
             <p className="font-sans text-xs sm:text-sm text-zinc-300 leading-relaxed pt-2">
-              Celestius recruitment submissions are currently closed as candidate applications undergo evaluation. Stay tuned for future intake announcements and track updates. In the meantime, explore all our technical and non-technical domains!
+              Recruitment applications for this cycle are officially closed. Submissions are now under evaluation by domain leads. Stay tuned for shortlist announcements and future opportunities to join Celestius!
             </p>
           </div>
 
@@ -2173,8 +2173,12 @@ export default function RecruitmentApply({
           >
             Candidate Application
           </h1>
-          <p className="text-xs sm:text-sm text-zinc-400 font-sans">
-            Complete the details below to submit your recruitment application.
+          <p className="text-xs sm:text-sm text-zinc-400 font-sans flex flex-wrap items-center gap-x-2 gap-y-1">
+            <span>Complete the details below to submit your recruitment application.</span>
+            <span className="inline-flex items-center gap-1.5 text-[11px] font-mono text-[#FFCC00] bg-[#FFCC00]/10 border border-[#FFCC00]/25 px-2 py-0.5 rounded-md">
+              <Clock className="w-3 h-3 text-[#FFCC00]" />
+              <span>Registrations will be closing soon</span>
+            </span>
           </p>
         </div>
 
