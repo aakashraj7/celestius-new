@@ -5,7 +5,6 @@ import EventModal from './components/EventModal';
 import IntroAnimation from './components/IntroAnimation';
 import DynamicBackground from './components/DynamicBackground';
 import CircularLoader from './components/CircularLoader';
-import RecruitmentPopup from './components/RecruitmentPopup';
 import { getApiBaseUrl } from './config/api';
 
 import NotFound from './pages/NotFound';
@@ -301,13 +300,6 @@ export default function App() {
           onClose={() => setSelectedEvent(null)} 
         />
       )}
-
-      {/* Bespoke Holographic Recruitment Invitation Popup */}
-      <RecruitmentPopup 
-        onNavigateApply={handlePageChange} 
-        introCompleted={introCompleted} 
-        activePage={activePage} 
-      />
 
       {/* Celestius Gold Minimal Footer with Replay Intro trigger */}
       <Footer setActivePage={handlePageChange} onReplayIntro={handleReplayIntro} />
